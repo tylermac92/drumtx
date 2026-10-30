@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "drumtx"
+version = "0.1.0.dev0"
+description = "Command-line drum transcription from audio to editable notation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["typer>=0.12"]
+
+[project.scripts]
+drumtx = "drumtx.cli:app"
+
+[dependency-groups]
+dev = ["mypy", "pytest", "ruff"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
