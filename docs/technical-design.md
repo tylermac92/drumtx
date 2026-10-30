@@ -34,7 +34,7 @@ These are planning assumptions, not user requirements. Each one is chosen to be 
 |---|---|---|---|
 | Language | Python 3.11+ (exact range pinned in M0) | The audio and ML ecosystem is mature (NumPy, librosa, PyTorch, ONNX Runtime, mir_eval). | Core logic sits behind a library API, so a later GUI or service can reuse it. |
 | Operating systems | Linux, macOS, Windows | Musicians use all three. A CI matrix keeps them working. | No OS-specific code outside audio decoding and paths. |
-| Distribution | `pipx install drumtx`; optional extras `drumtx[separation]` and `drumtx[plot]` | Keeps the default install small. Heavy dependencies are opt-in. | A Docker image or standalone binaries can come later. |
+| Distribution | Personal use only, not published (decision 0001). `pipx install .` from a local clone; optional extras `[separation]` and `[plot]` | Keeps the default install small. Heavy dependencies are opt-in. | A Docker image or standalone binaries can come later. |
 | User skill | Comfortable with a terminal and a notation editor or DAW | Matches a CLI-first product. | Library API and JSON outputs allow wrappers later. |
 | Audio content | Recordings with an acoustic or electronic drum kit, mostly steady tempo, 60–200 BPM | This is the case current methods handle reasonably well. | Tempo and grid overrides cover edge cases. Limits are documented. |
 | Meter | N/4 time signatures supplied by the user (default 4/4) | Automatic meter detection is unreliable. | The `TempoMap` structure already allows meter changes later. |
@@ -97,7 +97,9 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 ### Key `render` options
 
-`render` accepts `--formats`, `--grid`, `--mark-uncertain`, `--midi-timing`, and `--mapping`, plus two rhythm overrides that work on the stored beat times without the audio: `--first-downbeat SEC` and `--time-signature N/4`. With an override, the updated tempo map is saved to `events.json`. `render` overwrites the score, MIDI, and report it writes, and never modifies its input events file. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
+`render` accepts `--formats` (default `musicxml,midi,report`), `--grid`, `--mark-uncertain`, `--midi-timing`, and `--mapping`, plus two rhythm overrides that work on the stored beat times without the audio: `--first-downbeat SEC` and `--time-signature N/4`.
+
+`render` never modifies `events.csv`. It overwrites the score, MIDI, and report, and rewrites `events.json` from the event list it rendered, so the tempo map, quantized positions, and flags there match the new score. The rewrite keeps the source metadata and the CSV hash recorded by `transcribe`, so edit protection still works. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
 
 ### Example commands
 
@@ -105,14 +107,14 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 # Isolated drum recording, defaults
 drumtx transcribe drums_take3.wav
 
-# Full mix: isolate drums, known tempo and meter, excerpt only
-drumtx transcribe song.mp3 --separate --bpm 96 --time-signature 4/4 --start 30 --end 75
+# Full mix: isolate drums, known meter, excerpt only
+drumtx transcribe song.mp3 --separate --time-signature 4/4 --start 30 --end 75
 
 # Fix a wrong downbeat without re-running detection or touching the audio
-drumtx render song_drumtx/song.events.json --first-downbeat 1.24
+drumtx render song_drumtx/song.events.json --first-downbeat 31.24
 
-# Fix a wrong tempo estimate (beat tracking re-runs; cached detection is reused)
-drumtx transcribe song.mp3 --separate --bpm 96 --force
+# Fix a half-speed tempo estimate (beat tracking re-runs; cached detection is reused)
+drumtx transcribe song.mp3 --separate --time-signature 4/4 --start 30 --end 75 --bpm 96 --force
 
 # Listen to what was detected: original on the left channel, synthesized hits on the right
 drumtx preview song.mp3 song_drumtx/song.events.json --split-stereo -o check.wav
@@ -155,7 +157,7 @@ Note: automatic transcription contains errors. Check flagged measures first.
 |---|---|---|
 | `<name>.musicxml` | MusicXML 4.0, uncompressed | One percussion part on a five-line staff. Voice 1 (stems up): hands (hi-hat, snare, tom, cymbal). Voice 2 (stems down): kick. One time signature and one tempo marking (median tempo). Grid of 16ths and 8th-note triplets, using `divisions = 12` per quarter note. Cymbal and hi-hat noteheads are x. |
 | `<name>.mid` | Standard MIDI File type 1, channel 10, General MIDI drum notes | Tempo changes at every beat, so quantized notes line up with the original audio in a DAW. `--midi-timing performance` writes raw times instead. |
-| `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model ID, tempo map, events with confidence, velocity, quantized position, and review flags, plus the SHA-256 of the `events.csv` as written. This is the authoritative intermediate format. |
+| `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model ID, tempo map, events with confidence, velocity, quantized position, and review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
 | `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
 | `<name>.report.md` | Markdown | Settings, tempo summary, per-class counts, flagged measures with timestamps, known limitations. |
 | `<name>.preview.wav` | WAV, from `drumtx preview` only | Original audio plus synthesized hits from bundled CC0 samples. |
@@ -244,7 +246,7 @@ Drum notation conventions vary between publishers. The mapping is documented in 
 
    The flag thresholds are configurable and tuned in M5.
 
-`drumtx render` re-enters this flow at step 5, using a provided JSON or CSV file. An edited CSV has no tempo map, so `render` takes the tempo map from the sibling JSON file (`<name>.events.json`), adjusted by `--first-downbeat` or `--time-signature` when given.
+`drumtx render` re-enters this flow at step 5, using a provided JSON or CSV file. An edited CSV has no tempo map, so `render` takes the tempo map from the sibling JSON file (`<name>.events.json`), adjusted by `--first-downbeat` or `--time-signature` when given. `render` then rewrites `events.json` as described in §4.
 
 ### Example event (excerpt from `events.json`)
 
@@ -265,15 +267,15 @@ Candidates marked "decide in M0" depend on the licensing and spike results.
 | CLI | Typer | Type-hinted commands, generated help, testable through Click's `CliRunner`. | Click or argparse directly. |
 | Audio input/output | `soundfile`; FFmpeg subprocess as fallback | Reliable lossless decoding with few dependencies. FFmpeg covers everything else. | `audioread`, PyAV |
 | Resampling and features | librosa (or `soxr` for resampling) | Standard, well-documented spectrogram and onset tools. | torchaudio (adds a heavy dependency to the base install) |
-| Drum detection model | A CRNN on log-mel features with 5 class outputs; trained in PyTorch, shipped as ONNX | Convolutional-recurrent models are a common, proven approach in automatic drum transcription (ADT) research. ONNX Runtime keeps inference CPU-friendly and avoids PyTorch in the base install. | **Decide in M0.** Options: (a) adopt a published pretrained ADT model, such as models released with the ADTOF work, if its license fits; (b) train our own on permissively licensed data, such as E-GMD; (c) use the classical baseline only. Verify every license. |
+| Drum detection model | A CRNN on log-mel features with 5 class outputs; trained in PyTorch, shipped as ONNX | Convolutional-recurrent models are a common, proven approach in automatic drum transcription (ADT) research. ONNX Runtime keeps inference CPU-friendly and avoids PyTorch in the base install. | **Decide in M0.** Options: (a) adopt a published pretrained ADT model, such as models released with the ADTOF work; (b) train our own on any dataset whose terms allow personal use, such as E-GMD; (c) use the classical baseline only. Non-commercial terms are acceptable (decision 0001); check every other term. |
 | Classical baseline | Spectral-flux onset detection plus frequency-band classification, or NMF with drum templates | No training data needed. Provides a regression floor and a fallback. | — |
-| Beat and downbeat tracking | **Decide in M0** among: Beat This! (CPJKU), madmom, librosa | Beat This! is a recent neural beat and downbeat tracker. madmom is mature, but its model files carry non-commercial license terms. librosa tracks beats but not downbeats. | Each candidate conflicts with a base-install goal: Beat This! runs on PyTorch (needs an ONNX export, or goes in an extra); madmom's last PyPI release is old (verify it installs on Python 3.11+); librosa would need downbeats from `--first-downbeat` plus the meter. Verify license and maintenance status. Always support manual overrides. |
+| Beat and downbeat tracking | **Decide in M0** among: Beat This! (CPJKU), madmom, librosa | Beat This! is a recent neural beat and downbeat tracker. madmom is mature; its model files carry non-commercial terms, which are acceptable for this personal project. librosa tracks beats but not downbeats. | Each candidate conflicts with a base-install goal: Beat This! runs on PyTorch (needs an ONNX export, or goes in an extra); madmom's last PyPI release is old (verify it installs on Python 3.11+); librosa would need downbeats from `--first-downbeat` plus the meter. Verify license and maintenance status. Always support manual overrides. |
 | Source separation (optional) | Demucs-family model behind the `[separation]` extra | Strong drum-stem quality. Isolating the heavy PyTorch dependency keeps the base install light. | Verify upstream maintenance status and weight licenses. Open-Unmix as an alternative. |
 | MIDI | `mido` | Small, precise control over tempo events. | `pretty_midi` |
 | MusicXML | A small purpose-built writer (stdlib `xml.etree` or `lxml`), validated against the MusicXML 4.0 XSD | Drum notation needs precise control of `<unpitched>`, instrument definitions, voices, noteheads, and beaming. **Confirm in M0 spike.** | music21 (supports percussion; evaluate whether its control over voicing and noteheads suffices) |
 | Evaluation | `mir_eval` | Standard implementations of onset and beat metrics. | — |
 | Testing and quality | pytest, Hypothesis, ruff, mypy, pip-audit | Property tests suit the quantizer; static checks catch errors cheaply. | — |
-| Packaging and CI | `pyproject.toml` (hatchling), GitHub Actions matrix (Linux, macOS, Windows), PyPI trusted publishing | Minimal infrastructure. | — |
+| Packaging and CI | `pyproject.toml` (hatchling), GitHub Actions matrix (Linux, macOS, Windows) | Minimal infrastructure. | — |
 
 ## 9. Quality assessment and correction workflow
 
@@ -315,8 +317,9 @@ The tool never claims a transcription is correct. Every report ends with a short
 - **Data.**
   - A development set used for tuning, and a frozen held-out test set used only for release reports.
   - Each set is split into drum-only and full-mix subsets and stratified by style.
-  - Annotations are of three kinds: onsets (CSV, same columns as `events.csv`) on every clip; beats and downbeats on every clip; and a reference score (onsets with `measure`, `beat`, `slot`) on a subset, for grid accuracy.
-  - Candidate sources: public ADT datasets (for example ENST-Drums, MDB Drums, IDMT-SMT-Drums, E-GMD, ADTOF). Several carry research-only or non-commercial terms, so each needs a license check (M0-2). These are supplemented by a small set of recordings the team annotates itself, with permission.
+  - Annotations are of three kinds: onsets (CSV, same columns as `events.csv`) on every clip; beats and downbeats on a rhythm subset (derived from a dataset's tempo data where it has some, otherwise annotated by hand); and a reference score (onsets with `measure`, `beat`, `slot`) on a smaller subset, for grid accuracy.
+  - Candidate sources: public ADT datasets (for example ENST-Drums, MDB Drums, IDMT-SMT-Drums, E-GMD, ADTOF), supplemented by a small set of the author's own recordings, annotated by hand. Non-commercial terms are acceptable (decision 0001); research-only, registration, and no-redistribution terms are checked per dataset (M0-2).
+  - Datasets and third-party model weights are kept locally and never committed to the git repository.
 - **Reporting.** Each model release ships a model card with per-class, per-subset results and known failure modes. Numbers are never quoted without saying which subset they come from.
 
 ## 11. Performance
@@ -346,7 +349,7 @@ The tool never claims a transcription is correct. Every report ends with a short
   - Decoders and FFmpeg are kept current.
   - Duration and size limits are enforced before full decode where possible.
 - Model files are verified by SHA-256 before loading. Formats that execute code on load (such as pickle) are not used; models ship as ONNX or safetensors.
-- `transcribe` never overwrites existing files without `--force`, and never overwrites a hand-edited `events.csv`. `render` overwrites only the files it writes, never its input. Output paths are resolved and checked.
+- `transcribe` never overwrites existing files without `--force`, and never overwrites a hand-edited `events.csv`. `render` never modifies `events.csv`. Output paths are resolved and checked.
 - `pip-audit` runs in CI. Dependencies are pinned in a lock file used by CI and release builds.
 
 ## 13. Key technical risks and trade-offs
@@ -357,11 +360,10 @@ The tool never claims a transcription is correct. Every report ends with a short
 | Hi-hat vs. cymbal confusion; merged tom and cymbal classes | Wrong noteheads and classes | Five-class vocabulary for the MVP; classes flagged as lower-confidence; finer classes deferred. |
 | Beat or downbeat errors (half/double tempo, bar offset) | Entire score shifted or garbled | User overrides; tempo-stability flags; fast re-runs from cache; report shows the estimated values prominently. |
 | Rubato, tempo changes, swing | Off-grid events, wrong triplet choices | Per-beat grid selection; residual flags; one tempo marking in notation but a full tempo map in MIDI; swing handling is post-MVP. |
-| Licensing of pretrained models and datasets | May block distribution or commercial use | License review in M0 before any adoption; recorded in a decision record; option to train only on permissive data. |
-| Choosing separation vs. no separation by default | Quality vs. speed and install size | Off by default in MVP; documented recommendation for full mixes; revisit after beta (Q3). |
+| Licensing of pretrained models and datasets | Some terms go beyond non-commercial (research-only, no redistribution); sharing the project later would need replacements | Per-item review in M0-2; nothing third-party committed to the repository; revisit decision 0001 before any sharing. |
+| Choosing separation vs. no separation by default | Quality vs. speed and install size | Off by default in MVP; documented recommendation for full mixes; revisit after the M7-1 trial (Q3). |
 | Valid MusicXML that still reads poorly (voicing, beaming, rests) | Users must reformat | Notation readability rules (M4-2); review by a drummer; golden files. |
-| Training data does not match user recordings | Benchmarks overstate quality | Mix of datasets plus self-annotated real-world clips; collect consented failure cases in beta. |
-| Permissive licensing (Q1) leaves mostly electronic-kit, drum-only training data (for example E-GMD, CC BY 4.0) | Weak results on acoustic kits and full mixes | Decide Q1 knowing this cost; augment with backing-track mixing and self-recorded acoustic clips; report full-mix numbers separately. |
+| Training data does not match user recordings | Benchmarks overstate quality | Mix of datasets plus self-annotated real-world clips; add failure cases from your own recordings (M7-1). |
 | Beat tracker choice pulls PyTorch or unmaintained code into the base install | Larger install or install failures | Install footprint and Python-version support are M0-5 selection criteria; ONNX export or an extra if needed. |
 | Optional dependencies break across operating systems | Installation failures | Lightweight base install; `doctor` command; CI install matrix. |
 
@@ -371,14 +373,14 @@ Each question has a working default used until it is resolved.
 
 | # | Question | Why it matters | Working default |
 |---|---|---|---|
-| Q1 | Distribution and license model: open source (which license), free to use, any commercial intent? | Decides which models and datasets are allowed. | Permissive open source; avoid non-commercial components in the default install. |
+| Q1 | Distribution and license model: open source (which license), free to use, any commercial intent? | Decides which models and datasets are allowed. | **Resolved** (decision 0001): personal tool, no commercial use, not distributed. Non-commercial components are allowed. |
 | Q2 | Adopt a pretrained ADT model or train our own? | Largest effect on effort and accuracy. | Decided by M0-4 spike and M0-2 license review. |
-| Q3 | Should `--separate` be on by default? | Quality vs. runtime and install size. | Off; revisit after beta data. |
+| Q3 | Should `--separate` be on by default? | Quality vs. runtime and install size. | Off; revisit after the M7-1 trial. |
 | Q4 | Which notation apps must be officially supported? | Defines the compatibility test matrix. | MuseScore required; others best-effort. |
 | Q5 | Primary input type expected from users: isolated drums or full mixes? | Tuning priorities and defaults. | Optimize for both; report separately. |
 | Q6 | Is GPU support a requirement? | Test matrix and packaging complexity. | Separation only (`--device cuda`); detection is CPU-only. Untested beyond a smoke test. |
-| Q7 | Where are model files hosted? | Release process and availability. | GitHub Releases assets with checksums. |
-| Q8 | Is a Python library API part of the public contract for v0.1? | Stability promises. | Internal; only the CLI and `events.json` schema are stable. |
+| Q7 | Where are model files hosted? | Release process and availability. | **Resolved** (decision 0001): no hosting. Models are downloaded from their upstream sources, or trained locally, into the per-user model directory. |
+| Q8 | Is a Python library API part of the public contract for v0.1? | Stability promises. | **Resolved** (decision 0001): no public API; the CLI and `events.json` schema are the only interfaces. |
 
 ## 15. Post-MVP enhancements
 
@@ -387,5 +389,5 @@ Each question has a working default used until it is resolved.
 - Swing detection and notation; compound meters; time-signature changes; tempo-change markings.
 - PDF output; `.mxl`; MIDI import for correction round-trips.
 - Batch processing of folders; config file.
-- Fine-tuning on user-corrected data, with explicit consent.
+- Fine-tuning on your own corrected transcriptions.
 - GUI or web front end built on the same library.
