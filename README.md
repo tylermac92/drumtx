@@ -20,8 +20,10 @@ Uses [uv](https://docs.astral.sh/uv/) and its lock file (`uv.lock`).
 ```bash
 uv sync
 uv run ruff check && uv run ruff format --check
-uv run mypy src tests
+uv run mypy src tests scripts
 uv run pytest
 ```
 
 CI runs these checks plus a `pipx install` smoke test on Linux, macOS, and Windows with Python 3.11 and 3.13.
+
+The evaluation corpus is built locally from public datasets (`scripts/build_corpus.py`); see `docs/decisions/0004-evaluation-corpus.md`.

@@ -1,0 +1,2 @@
+# Frozen manifests are hashed byte for byte; keep LF line endings on every OS.
+eval/*.csv -text

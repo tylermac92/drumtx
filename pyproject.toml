@@ -14,7 +14,12 @@ dependencies = ["typer>=0.12"]
 drumtx = "drumtx.cli:app"
 
 [dependency-groups]
-dev = ["mypy", "pytest", "ruff"]
+dev = [
+    "mido>=1.3.3",
+    "mypy",
+    "pytest",
+    "ruff",
+]
 
 [tool.ruff]
 line-length = 100
@@ -25,5 +30,10 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.mypy]
 strict = true
 
+[[tool.mypy.overrides]]
+module = ["mido"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["scripts"]

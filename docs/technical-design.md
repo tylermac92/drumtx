@@ -320,6 +320,7 @@ The tool never claims a transcription is correct. Every report ends with a short
   - Annotations are of three kinds: onsets (CSV, same columns as `events.csv`) on every clip; beats and downbeats on a rhythm subset (derived from a dataset's tempo data where it has some, otherwise annotated by hand); and a reference score (onsets with `measure`, `beat`, `slot`) on a smaller subset, for grid accuracy.
   - Sources (decision 0003): E-GMD, MDB Drums, and IDMT-SMT-Drums (evaluation only), supplemented by a small set of the author's own recordings, annotated by hand. ENST-Drums and the ADTOF datasets are excluded by their terms.
   - Datasets and third-party model weights are kept locally and never committed to the git repository.
+  - The corpus, its annotation formats, and the frozen split manifests (`eval/dev.csv`, `eval/test.csv`) are defined in decision 0004.
 - **Reporting.** Each model release ships a model card with per-class, per-subset results and known failure modes. Numbers are never quoted without saying which subset they come from.
 
 ## 11. Performance
@@ -377,7 +378,7 @@ Each question has a working default used until it is resolved.
 | Q2 | Adopt a pretrained ADT model or train our own? | Largest effect on effort and accuracy. | Decided by M0-4 spike and M0-2 license review. |
 | Q3 | Should `--separate` be on by default? | Quality vs. runtime and install size. | Off; revisit after the M7-1 trial. |
 | Q4 | Which notation apps must be officially supported? | Defines the compatibility test matrix. | MuseScore required; others best-effort. |
-| Q5 | Primary input type expected from users: isolated drums or full mixes? | Tuning priorities and defaults. | Optimize for both; report separately. |
+| Q5 | Primary input type expected from users: isolated drums or full mixes? | Tuning priorities and defaults. | **Resolved** (decision 0004): default accepted. Optimize for both; report separately. |
 | Q6 | Is GPU support a requirement? | Test matrix and packaging complexity. | Separation only (`--device cuda`); detection is CPU-only. Untested beyond a smoke test. |
 | Q7 | Where are model files hosted? | Release process and availability. | **Resolved** (decision 0001): no hosting. Models are downloaded from their upstream sources, or trained locally, into the per-user model directory. |
 | Q8 | Is a Python library API part of the public contract for v0.1? | Stability promises. | **Resolved** (decision 0001): no public API; the CLI and `events.json` schema are the only interfaces. |
