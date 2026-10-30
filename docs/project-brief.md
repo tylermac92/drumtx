@@ -46,13 +46,14 @@ The output is treated as a **first draft to be corrected**, not a finished trans
 - Fine articulation: flams, drags, rimshots, cross-sticks, open/closed hi-hat, ghost-note notation.
 - Specific tom identification (high, mid, floor), and specific cymbal identification (crash vs. ride).
 - Automatic time-signature detection and compound meters (6/8, 12/8).
+- 32nd notes and 16th-note triplets (sextuplets). Such passages are snapped to the nearest supported grid, and timing flags usually point to them.
 
 ## MVP scope
 
 | Area | MVP decision |
 |---|---|
 | Platforms | Python package for Linux, macOS, and Windows, installed with `pipx`. |
-| Input | WAV and FLAC natively; MP3 via the audio library; other formats when FFmpeg is installed. Mono or stereo, up to 10 minutes by default. |
+| Input | WAV, FLAC, and AIFF natively; MP3 and OGG via the audio library; other formats when FFmpeg is installed. Mono or stereo, up to 10 minutes by default. |
 | Instrument classes | Five: `kick`, `snare`, `hihat`, `tom`, `cymbal`. |
 | Drum isolation | Optional (`--separate`) for full mixes. |
 | Rhythm | Beat and downbeat tracking, with user overrides (`--bpm`, `--time-signature`, `--first-downbeat`). |
@@ -62,12 +63,12 @@ The output is treated as a **first draft to be corrected**, not a finished trans
 
 ## Key success measures
 
-The numeric targets below are provisional. They will be recalibrated after the baseline is measured in milestone M1.
+The numeric targets below are provisional. They will be recalibrated after the baseline is measured in milestone M1 (task M1-6), which also sets targets for tom, cymbal, full-mix audio, and rhythm (downbeat F-measure and grid accuracy).
 
 | Measure | Target |
 |---|---|
 | Per-class onset F-measure on a held-out test set, ±50 ms tolerance | Reported separately for drum-only and full-mix audio. Initial aim on drum-only audio: ≥ 0.85 for kick and snare, ≥ 0.75 for hi-hat. |
-| Notation validity | 100% of generated MusicXML validates against the MusicXML 4.0 schema and opens in MuseScore without errors on the test corpus. |
+| Notation validity | 100% of generated MusicXML validates against the MusicXML 4.0 schema and opens in MuseScore without errors on the development set during work (M4-5) and on the test set at release (M7-4). |
 | Runtime | ≤ 1× real time on a reference laptop CPU without separation. |
 | Correction effort | Most beta users report that correcting the draft is faster than transcribing by hand (self-reported survey). |
 | Installation | Clean install and smoke test pass on all three operating systems in CI. |
