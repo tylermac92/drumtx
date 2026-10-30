@@ -8,13 +8,19 @@
 - **No dates are given**, because no timeline was specified. The team should size the tasks during M0.
 - **Task IDs** (for example M2-3) are referenced in dependency notes. Open questions Q1–Q8 refer to the Technical Design Document.
 
-### Definition of done (applies to every task)
+### Definition of done
+
+For tasks that change code:
 
 - Code reviewed and merged.
 - Tests added and passing in CI on Linux, macOS, and Windows.
 - User-facing behavior documented.
 - No new lint or type errors.
-- Any decision recorded in `docs/decisions/` when one was made.
+
+For every task, including those with no code (reviews, spikes, estimates, beta):
+
+- The output is reviewed and committed.
+- Any decision is recorded in `docs/decisions/`.
 
 ## M0 — Foundations and feasibility
 
@@ -28,15 +34,18 @@
   - The CI matrix (3 operating systems × supported Python versions) runs lint, type checks, and tests on every pull request.
 
 **M0-2 — License and component review**
-- *Description:* List candidate detection models, beat trackers, separation models, datasets, and drum samples, each with its license and usage terms. Recommend components given Q1.
+- *Description:* First, have the project owner resolve Q1 (or explicitly accept its working default). Then list candidate detection models, beat trackers, separation models, datasets, and drum samples, each with its license and usage terms, and recommend components.
 - *Acceptance criteria:*
+  - Q1's outcome is recorded in a decision record, including what it costs in training data (for example, excluding non-commercial datasets leaves mostly electronic-kit, drum-only data such as E-GMD).
   - A decision record contains a table of components, licenses, and verdicts (allowed / allowed as optional extra / excluded).
   - Every non-commercial or unclear item is flagged.
-- *Dependencies:* Q1 must be resolved, or the working default accepted.
+- *Dependencies:* None; Q1 is resolved within this task.
 
 **M0-3 — Evaluation corpus and annotation format**
-- *Description:* Define the reference annotation format (CSV, same columns as `events.csv`). Assemble a development set and a held-out test set, each with drum-only and full-mix subsets, from allowed sources plus self-recorded or permitted clips.
+- *Description:* Define the reference annotation formats: onsets (CSV, same columns as `events.csv`), beats and downbeats, and a reference score (onsets with `measure`, `beat`, `slot`) for grid accuracy. Assemble a development set and a held-out test set, each with drum-only and full-mix subsets, from allowed sources plus self-recorded or permitted clips.
 - *Acceptance criteria:*
+  - Every clip has onset and beat/downbeat annotations; a recorded subset also has a reference score.
+  - Q5 (isolated drums vs. full mixes) is resolved or its default accepted, and the subset sizes reflect it.
   - A manifest lists every clip with its source, license, subset, and split.
   - Splits are frozen and hashed.
   - A written rule says the test set is used only for release evaluation.
@@ -54,7 +63,8 @@
 - *Description:* Compare candidate trackers on development clips with beat annotations.
 - *Acceptance criteria:*
   - Beat and downbeat F-measure, failure modes (half or double tempo, bar offset), runtime, and license are documented.
-  - One tracker is selected, along with a fallback.
+  - Install footprint and support for the pinned Python versions are documented, including whether inference works without PyTorch (for example through ONNX export).
+  - One tracker is selected, along with a fallback. If it needs PyTorch, the decision record says whether it goes in an extra.
 - *Dependencies:* M0-2, M0-3.
 
 **M0-6 — Spike: MusicXML percussion output**
@@ -89,6 +99,8 @@
   - A missing FFmpeg for M4A gives exit code 3 and an install hint.
   - Corrupt or unsupported files give exit code 2 and a clear message.
   - Files over 10 minutes are rejected unless `--max-duration` is set.
+  - Inputs under 2 seconds, and files over the size cap (checked before decoding), give exit code 2.
+  - With `--start`/`--end`, downstream times stay relative to the start of the source file (test).
   - Non-ASCII paths work.
 - *Dependencies:* M0-1.
 
@@ -106,13 +118,14 @@
   - Emits schema-valid events.
   - Per-class development-set results are recorded as the regression floor.
   - Isolated synthetic hits are detected within ±10 ms.
-- *Dependencies:* M0-4, M1-1.
+- *Dependencies:* M0-4, M0-7, M1-1, M1-5.
 
 **M1-4 — Evaluation command**
-- *Description:* Implement `drumtx evaluate` using `mir_eval` onset metrics. Accept a reference as MIDI (GM drum mapping) or CSV. Make the tolerance configurable. Write JSON and Markdown output.
+- *Description:* Implement `drumtx evaluate` using `mir_eval` onset and beat metrics. Accept a reference as MIDI (GM drum mapping) or CSV. Make the tolerance configurable. Write JSON and Markdown output.
 - *Acceptance criteria:*
   - Results on hand-computed fixtures match expectations exactly.
   - Per-class and overall P/R/F are reported at 50 ms and 30 ms.
+  - Beat and downbeat F-measure are reported when the reference has beat annotations.
   - Unknown MIDI notes are reported, not silently dropped.
 - *Dependencies:* M0-7.
 
@@ -130,13 +143,15 @@
   - Results include the commit and model ID.
   - A comparison against the previous results file highlights per-class regressions above a configurable margin.
   - It runs as a manual or nightly CI job.
+  - After the first baseline run, the brief's provisional targets are reviewed, targets are added for tom, cymbal, full-mix audio, and rhythm, and the outcome is recorded in a decision record and in the brief.
 - *Dependencies:* M1-3, M1-4, M0-3.
 
 **M1-7 — Unquantized event outputs**
 - *Description:* `transcribe` writes `events.json` and `events.csv` (detection only, empty tempo map).
 - *Acceptance criteria:*
   - Outputs are schema-valid.
-  - Existing files are not overwritten without `--force`.
+  - Existing files are not overwritten without `--force` (exit code 2).
+  - The SHA-256 of `events.csv` is stored in `events.json`; `--force` refuses to overwrite a CSV whose hash no longer matches (test).
   - Exit codes match the Technical Design Document §4.
 - *Dependencies:* M1-2, M1-3.
 
@@ -177,9 +192,10 @@
 - *Dependencies:* M2-2.
 
 **M2-5 — Model distribution**
-- *Description:* Model registry with ID, version, URL, SHA-256, and license. Download on first use into a per-user cache directory. Implement `drumtx models list|download` and `--offline`.
+- *Description:* Model registry with ID, version, URL, SHA-256, and license. Download on first use into a per-user cache directory. Implement `drumtx models list|download`, `--offline`, and `--model` (where `baseline` selects the classical detector).
 - *Acceptance criteria:*
-  - A tampered or corrupted file is rejected with a clear error.
+  - A tampered or corrupted file is rejected with a clear error (exit code 4).
+  - `--model baseline` works offline with no model installed.
   - `--offline` works with a pre-downloaded model and fails with exit code 3 when the model is absent.
   - A CI test with networking disabled passes.
   - Only ONNX or safetensors formats are loaded.
@@ -191,7 +207,7 @@
   - Without the extra, the error message gives the exact `pipx inject` or `pip` command (exit code 3).
   - On the full-mix development subset, results with and without separation are reported, along with runtime.
   - The separated stem is cached.
-- *Dependencies:* M1-2, M0-2.
+- *Dependencies:* M1-2, M1-6, M0-2.
 
 **M2-7 — Model release evaluation**
 - *Description:* Run the frozen test set once for the candidate model.
@@ -224,6 +240,7 @@
 - *Description:* Flag uncertain events, measures with large residuals, tempo deviation, and merges, using configurable thresholds.
 - *Acceptance criteria:*
   - Flags appear in `events.json` per event and per measure.
+  - The residual threshold is a fraction of the grid step, not a fixed number of milliseconds, so it behaves the same at 60 and 200 BPM (test).
   - The thresholds are documented.
   - Fixture tests cover each flag type.
 - *Dependencies:* M3-2, M2-4.
@@ -242,6 +259,13 @@
   - A custom mapping changes MIDI notes and staff positions.
   - Invalid files produce errors naming the bad key (exit code 2).
 - *Dependencies:* M0-7.
+
+**M3-6 — Rhythm evaluation**
+- *Description:* Add grid accuracy (share of reference hits placed in the correct measure, beat, and slot) to `drumtx evaluate`, and add beat, downbeat, and grid metrics to the benchmark runner.
+- *Acceptance criteria:*
+  - Grid accuracy on hand-computed fixtures matches expectations exactly, including a bar-offset case.
+  - Benchmark results report beat F-measure, downbeat F-measure, and grid accuracy per subset, and highlight regressions like the onset metrics.
+- *Dependencies:* M3-2, M1-4, M1-6, M0-3.
 
 ## M4 — MusicXML notation output
 
@@ -273,7 +297,7 @@
 - *Description:* Handle audio before the first downbeat (pad a leading measure with rests), a trailing partial measure, long silences, and very dense passages.
 - *Acceptance criteria:*
   - Each case has a fixture test producing schema-valid, sensible output.
-  - Measure numbers in the score match measure numbers in the report.
+  - Measure numbers in the score match measure numbers in the report; a pickup measure is numbered 0.
 - *Dependencies:* M4-1.
 
 **M4-5 — Compatibility testing**
@@ -291,7 +315,7 @@
 **M5-1 — Review report**
 - *Description:* `report.md` with the run settings, model ID, tempo summary (and stability), per-class counts, flagged measures with audio timestamps and reasons, a "suggested next steps" section (override flags, preview), and a limitations note.
 - *Acceptance criteria:*
-  - Generated on every `transcribe` and `render` run.
+  - Generated on every `transcribe` run (and every `render` run, through M5-3).
   - Flagged measure timestamps match the audio (spot-checked on 5 clips).
   - Readable as plain text and as rendered Markdown.
 - *Dependencies:* M3-3.
@@ -305,22 +329,25 @@
 - *Dependencies:* M1-7, M0-2.
 
 **M5-3 — `render` from edited events**
-- *Description:* Load JSON or CSV (with the tempo map from the sibling JSON file or from flags), validate, re-quantize, and re-render the selected formats.
+- *Description:* Load JSON or CSV (with the tempo map from the sibling JSON file), apply `--first-downbeat` and `--time-signature` overrides to the stored beats, validate, re-quantize, and re-render the selected formats and the report.
 - *Acceptance criteria:*
   - Adding, deleting, or reclassifying CSV rows is reflected in the MusicXML and MIDI (end-to-end test).
+  - Rows added with blank `confidence` and `velocity` are accepted (read as 1.0 and 100).
+  - `--first-downbeat` moves barlines without the audio file present, and the updated tempo map is saved to `events.json` (test).
+  - The input events file is never modified; the score, MIDI, and report are overwritten.
   - Validation errors list the row numbers.
   - Detection does not run.
-- *Dependencies:* M3-2, M4-1, M3-4.
+- *Dependencies:* M3-2, M4-1, M3-4, M5-1.
 
 **M5-4 — Tune flag thresholds**
 - *Description:* Using the development set, tune the review thresholds so flagged measures capture a large share of actual errors without flagging most of the piece.
 - *Acceptance criteria:*
   - A documented trade-off table shows the share of erroneous measures flagged against the share of all measures flagged.
   - Default thresholds are chosen and recorded.
-- *Dependencies:* M5-1, M2-7.
+- *Dependencies:* M5-1, M2-3, M2-4 (the final presets and calibrated confidence; not the test-set run).
 
 **M5-5 — Correction guide**
-- *Description:* A tutorial covering: read the report → preview → fix tempo and downbeat with flags → fix hits in MuseScore or CSV → re-render. Uses a sample file the project can share.
+- *Description:* A tutorial covering: read the report → preview → fix tempo and downbeat with flags (before editing any hits) → fix hits in MuseScore or CSV → re-render. Uses a sample file the project can share.
 - *Acceptance criteria:*
   - A team member who has not used the tool completes the guide on the sample without help.
   - Screenshots and commands are current.
@@ -374,7 +401,7 @@
 - *Acceptance criteria:*
   - `doctor` output is correct in CI on all three operating systems, both with and without FFmpeg and the extras.
   - Install from the wheel plus a smoke test passes on all three operating systems.
-- *Dependencies:* M0-1.
+- *Dependencies:* M0-1, M2-5, M2-6.
 
 **M6-6 — Documentation set**
 - *Description:* README (what it does and does not do), install guide, quickstart, CLI reference (generated from Typer), output formats and schema, accuracy and limitations (from M2-7), correction guide (M5-5), troubleshooting, and contributing guide.
@@ -400,6 +427,7 @@
 - *Description:* Fix top-priority issues. Re-tune presets and flag thresholds using only the development set, plus consented beta clips added to the development set.
 - *Acceptance criteria:*
   - All severity-1 issues are closed.
+  - Q3 (separation on by default?) is re-decided from beta data and recorded.
   - The benchmark shows no regressions on the development set.
   - The test set remains untouched until M7-4.
 - *Dependencies:* M7-1.
@@ -409,6 +437,7 @@
 - *Acceptance criteria:*
   - A dry-run release to TestPyPI installs and passes the smoke test on all three operating systems.
   - Model checksums in the registry match the hosted files.
+  - Q8 (is the library API public?) is decided, and the stable contract is stated in the README.
   - The checklist is committed.
 - *Dependencies:* M2-5, M6-5.
 
@@ -417,8 +446,10 @@
 - *Acceptance criteria:*
   - Published numbers come from the release build.
   - The subsets and tolerances are stated.
+  - Rhythm metrics (beat, downbeat, grid accuracy) are published alongside onset metrics.
+  - 100% of test-set MusicXML outputs validate against the XSD and open in MuseScore.
   - Known failure modes are listed.
-  - Comparison with the brief's provisional targets is reported honestly, including any misses.
+  - Comparison with the brief's targets (as recalibrated in M1-6) is reported honestly, including any misses.
 - *Dependencies:* M7-2.
 
 **M7-5 — v0.1.0 release and post-release plan**
