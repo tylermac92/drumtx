@@ -132,12 +132,12 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 - *Dependencies:* M0-3, M0-7.
 
 **M1-5 — Synthetic fixture generator**
-- *Description:* A seeded script renders MIDI drum patterns to audio using CC0 samples, with optional noise and backing tracks.
+- *Description:* A seeded script renders MIDI drum patterns to audio using drum sounds synthesized in code (decision 0003), with optional noise and backing tracks.
 - *Acceptance criteria:*
   - Output is deterministic (identical hashes across runs and operating systems within tolerance).
   - Fixtures cover straight 16ths, triplets, and simultaneous hits.
   - The fixtures are used in an end-to-end test that runs in under 60 seconds in CI.
-- *Dependencies:* M0-2 (sample licenses).
+- *Dependencies:* M0-2 (sample decision).
 
 **M1-6 — Benchmark runner**
 - *Description:* One command runs a detector over the development set or (in release mode) the test set, and writes a results table and runtime.
@@ -324,7 +324,7 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 - *Dependencies:* M3-3.
 
 **M5-2 — `preview` command**
-- *Description:* Mix the original audio (reduced in level) with hits synthesized from bundled CC0 samples per class. Option `--split-stereo`.
+- *Description:* Mix the original audio (reduced in level) with hits synthesized per class from drum sounds generated in code. Option `--split-stereo`.
 - *Acceptance criteria:*
   - Synthesized hits are within ±10 ms of event times (fixture test).
   - Output is a WAV file at the source length.
