@@ -5,19 +5,20 @@
 - **Milestones** M0–M7 are sequenced. Some milestones can overlap where the dependencies allow it:
   - M3 can start once M1-7 exists, using the baseline detector.
   - M4 can start once the M3-2 quantizer interface is stable.
-- **No dates are given**, because no timeline was specified. The team should size the tasks during M0.
+- **No dates are given**, because no timeline was specified. Tasks are sized during M0 (M0-8).
+- **One developer.** DrumTx is a personal tool (decision 0001), so tasks are done and reviewed by the author.
 - **Task IDs** (for example M2-3) are referenced in dependency notes. Open questions Q1–Q8 refer to the Technical Design Document.
 
 ### Definition of done
 
 For tasks that change code:
 
-- Code reviewed and merged.
+- Merged through a pull request (self-reviewed).
 - Tests added and passing in CI on Linux, macOS, and Windows.
 - User-facing behavior documented.
 - No new lint or type errors.
 
-For every task, including those with no code (reviews, spikes, estimates, beta):
+For every task, including those with no code (reviews, spikes, estimates, trial):
 
 - The output is reviewed and committed.
 - Any decision is recorded in `docs/decisions/`.
@@ -34,22 +35,22 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
   - The CI matrix (3 operating systems × supported Python versions) runs lint, type checks, and tests on every pull request.
 
 **M0-2 — License and component review**
-- *Description:* First, have the project owner resolve Q1 (or explicitly accept its working default). Then list candidate detection models, beat trackers, separation models, datasets, and drum samples, each with its license and usage terms, and recommend components.
+- *Description:* Q1 is resolved: personal use only, no commercial intent, not distributed (`docs/decisions/0001-personal-use-only.md`). List candidate detection models, beat trackers, separation models, datasets, and drum samples, each with its license and usage terms, and recommend components.
 - *Acceptance criteria:*
-  - Q1's outcome is recorded in a decision record, including what it costs in training data (for example, excluding non-commercial datasets leaves mostly electronic-kit, drum-only data such as E-GMD).
-  - A decision record contains a table of components, licenses, and verdicts (allowed / allowed as optional extra / excluded).
-  - Every non-commercial or unclear item is flagged.
-- *Dependencies:* None; Q1 is resolved within this task.
+  - A decision record contains a table of components, licenses, and verdicts (allowed for personal use / excluded).
+  - Terms beyond non-commercial are flagged per item: research-only clauses, registration, and no-redistribution. Items with unclear terms are excluded.
+  - The record says where datasets and third-party weights live locally; none are committed to the repository.
+- *Dependencies:* None.
 
 **M0-3 — Evaluation corpus and annotation format**
 - *Description:* Define the reference annotation formats: onsets (CSV, same columns as `events.csv`), beats and downbeats, and a reference score (onsets with `measure`, `beat`, `slot`) for grid accuracy. Assemble a development set and a held-out test set, each with drum-only and full-mix subsets, from allowed sources plus self-recorded or permitted clips.
 - *Acceptance criteria:*
-  - Every clip has onset and beat/downbeat annotations; a recorded subset also has a reference score.
+  - Every clip has onset annotations. A rhythm subset of each split also has beat and downbeat annotations (derived from a dataset's tempo data where it has some, otherwise by hand), and a smaller subset has a reference score. Subset sizes and the hand-annotation effort are recorded.
   - Q5 (isolated drums vs. full mixes) is resolved or its default accepted, and the subset sizes reflect it.
   - A manifest lists every clip with its source, license, subset, and split.
   - Splits are frozen and hashed.
   - A written rule says the test set is used only for release evaluation.
-  - Each subset contains enough clips to give stable per-class numbers; the team sets the count and records the rationale.
+  - Each subset contains enough clips to give stable per-class numbers; the count and its rationale are recorded.
 - *Dependencies:* M0-2.
 
 **M0-4 — Spike: drum detection approach**
@@ -70,6 +71,7 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 **M0-6 — Spike: MusicXML percussion output**
 - *Description:* Write a hand-built two-bar groove (kick, snare, hi-hat, one triplet beat) twice: once with music21 and once with a minimal custom writer.
 - *Acceptance criteria:*
+  - Q4 is resolved: the notation apps you use are listed in a decision record.
   - Both files are checked in MuseScore (plus any apps chosen under Q4) for staff positions, x noteheads, two voices, beaming, and a triplet.
   - A decision record names the chosen approach.
   - The sample file is committed as a future golden file.
@@ -127,7 +129,7 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
   - Per-class and overall P/R/F are reported at 50 ms and 30 ms.
   - Beat and downbeat F-measure are reported when the reference has beat annotations.
   - Unknown MIDI notes are reported, not silently dropped.
-- *Dependencies:* M0-7.
+- *Dependencies:* M0-3, M0-7.
 
 **M1-5 — Synthetic fixture generator**
 - *Description:* A seeded script renders MIDI drum patterns to audio using CC0 samples, with optional noise and backing tracks.
@@ -143,7 +145,7 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
   - Results include the commit and model ID.
   - A comparison against the previous results file highlights per-class regressions above a configurable margin.
   - It runs as a manual or nightly CI job.
-  - After the first baseline run, the brief's provisional targets are reviewed, targets are added for tom, cymbal, full-mix audio, and rhythm, and the outcome is recorded in a decision record and in the brief.
+  - After the first baseline run, the brief's provisional targets are reviewed, targets are added for tom, cymbal, and full-mix audio, and the outcome is recorded in a decision record and in the brief.
 - *Dependencies:* M1-3, M1-4, M0-3.
 
 **M1-7 — Unquantized event outputs**
@@ -192,14 +194,14 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 - *Dependencies:* M2-2.
 
 **M2-5 — Model distribution**
-- *Description:* Model registry with ID, version, URL, SHA-256, and license. Download on first use into a per-user cache directory. Implement `drumtx models list|download`, `--offline`, and `--model` (where `baseline` selects the classical detector).
+- *Description:* Model registry with ID, version, URL (the upstream source, or a local path for a self-trained model), SHA-256, and license. Download on first use into a per-user cache directory. Implement `drumtx models list|download`, `--offline`, and `--model` (where `baseline` selects the classical detector).
 - *Acceptance criteria:*
   - A tampered or corrupted file is rejected with a clear error (exit code 4).
   - `--model baseline` works offline with no model installed.
   - `--offline` works with a pre-downloaded model and fails with exit code 3 when the model is absent.
   - A CI test with networking disabled passes.
   - Only ONNX or safetensors formats are loaded.
-- *Dependencies:* M2-2; Q7.
+- *Dependencies:* M2-2.
 
 **M2-6 — Optional separation**
 - *Description:* Add the `[separation]` extra and the `--separate` flag, with lazy import and device selection. Beat tracking stays on the full mix.
@@ -265,6 +267,7 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 - *Acceptance criteria:*
   - Grid accuracy on hand-computed fixtures matches expectations exactly, including a bar-offset case.
   - Benchmark results report beat F-measure, downbeat F-measure, and grid accuracy per subset, and highlight regressions like the onset metrics.
+  - After the first rhythm benchmark run, targets for downbeat F-measure and grid accuracy are set and recorded in a decision record and in the brief.
 - *Dependencies:* M3-2, M1-4, M1-6, M0-3.
 
 ## M4 — MusicXML notation output
@@ -281,7 +284,7 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 **M4-2 — Readability rules**
 - *Description:* Beam groups per beat, rest consolidation, triplet brackets, stem direction per voice, and note durations that extend to the next hit within the beat.
 - *Acceptance criteria:*
-  - A written checklist is agreed with a drummer reviewer.
+  - A written readability checklist exists, reviewed by a drummer if one is available.
   - Ten varied outputs from the development set pass the checklist in MuseScore.
   - Remaining issues are logged.
 - *Dependencies:* M4-1.
@@ -333,8 +336,8 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 - *Acceptance criteria:*
   - Adding, deleting, or reclassifying CSV rows is reflected in the MusicXML and MIDI (end-to-end test).
   - Rows added with blank `confidence` and `velocity` are accepted (read as 1.0 and 100).
-  - `--first-downbeat` moves barlines without the audio file present, and the updated tempo map is saved to `events.json` (test).
-  - The input events file is never modified; the score, MIDI, and report are overwritten.
+  - `--first-downbeat` moves barlines without the audio file present (test).
+  - `events.csv` is never modified. `events.json` is rewritten from the rendered event list, so its tempo map, positions, and flags match the new score, and it keeps the source metadata and the CSV hash recorded by `transcribe` (test).
   - Validation errors list the row numbers.
   - Detection does not run.
 - *Dependencies:* M3-2, M4-1, M3-4, M5-1.
@@ -347,9 +350,9 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 - *Dependencies:* M5-1, M2-3, M2-4 (the final presets and calibrated confidence; not the test-set run).
 
 **M5-5 — Correction guide**
-- *Description:* A tutorial covering: read the report → preview → fix tempo and downbeat with flags (before editing any hits) → fix hits in MuseScore or CSV → re-render. Uses a sample file the project can share.
+- *Description:* A tutorial covering: read the report → preview → fix tempo and downbeat with flags (before editing any hits) → fix hits in MuseScore or CSV → re-render. Uses one of your own recordings as the sample.
 - *Acceptance criteria:*
-  - A team member who has not used the tool completes the guide on the sample without help.
+  - You complete the guide end to end on the sample, following only its steps.
   - Screenshots and commands are current.
 - *Dependencies:* M5-1–M5-3.
 
@@ -404,40 +407,37 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
 - *Dependencies:* M0-1, M2-5, M2-6.
 
 **M6-6 — Documentation set**
-- *Description:* README (what it does and does not do), install guide, quickstart, CLI reference (generated from Typer), output formats and schema, accuracy and limitations (from M2-7), correction guide (M5-5), troubleshooting, and contributing guide.
+- *Description:* README (what it does and does not do, and how to install it), CLI reference (generated from Typer), output formats and schema, accuracy and limitations (from M2-7), correction guide (M5-5), and troubleshooting.
 - *Acceptance criteria:*
   - Every documented command is tested by a docs check that runs it.
   - The limitations page states expected accuracy differences between drum-only and full-mix audio.
-  - The documentation is reviewed by someone outside the core team.
 - *Dependencies:* M5-5, M2-7.
 
-## M7 — Beta and v0.1 release
+## M7 — Personal trial and v0.1
 
-**Goal:** Validate with real users, fix the most important problems, and ship v0.1 with an honest accuracy statement.
+**Goal:** Use DrumTx on your own recordings, fix the most important problems, and tag v0.1 with an honest accuracy record.
 
-**M7-1 — Private beta**
-- *Description:* Recruit about 5–10 testers, a mix of musicians and developers. Provide a pre-release build, a feedback template, a short survey on correction effort compared with manual transcription, and an opt-in way to share failure cases (audio shared only with explicit permission).
+**M7-1 — Personal trial**
+- *Description:* Transcribe 5–10 of your own recordings across styles, following the correction guide. On at least two tracks, time correcting the draft against transcribing by hand.
 - *Acceptance criteria:*
-  - Feedback is collected from all active testers.
-  - Issues are triaged by severity.
-  - Survey results are summarized against the success measure in the brief.
+  - Issues are logged and ranked by severity.
+  - The timings are recorded against the correction-effort measure in the brief.
 - *Dependencies:* M6.
 
-**M7-2 — Beta fixes and re-tuning**
-- *Description:* Fix top-priority issues. Re-tune presets and flag thresholds using only the development set, plus consented beta clips added to the development set.
+**M7-2 — Trial fixes and re-tuning**
+- *Description:* Fix top-priority issues. Re-tune presets and flag thresholds using only the development set, plus annotated clips from the trial added to the development set.
 - *Acceptance criteria:*
   - All severity-1 issues are closed.
-  - Q3 (separation on by default?) is re-decided from beta data and recorded.
+  - Q3 (separation on by default?) is re-decided from the trial results and recorded.
   - The benchmark shows no regressions on the development set.
   - The test set remains untouched until M7-4.
 - *Dependencies:* M7-1.
 
 **M7-3 — Release engineering**
-- *Description:* Semantic versioning, changelog, PyPI publishing through CI trusted publishing, model artifacts with checksums at the Q7 location, and a release checklist.
+- *Description:* Semantic versioning, changelog, and a release checklist. Nothing is published (decision 0001).
 - *Acceptance criteria:*
-  - A dry-run release to TestPyPI installs and passes the smoke test on all three operating systems.
-  - Model checksums in the registry match the hosted files.
-  - Q8 (is the library API public?) is decided, and the stable contract is stated in the README.
+  - The wheel built in CI installs with `pipx` and passes the smoke test on all three operating systems.
+  - Model checksums in the registry match the upstream files.
   - The checklist is committed.
 - *Dependencies:* M2-5, M6-5.
 
@@ -449,16 +449,14 @@ For every task, including those with no code (reviews, spikes, estimates, beta):
   - Rhythm metrics (beat, downbeat, grid accuracy) are published alongside onset metrics.
   - 100% of test-set MusicXML outputs validate against the XSD and open in MuseScore.
   - Known failure modes are listed.
-  - Comparison with the brief's targets (as recalibrated in M1-6) is reported honestly, including any misses.
+  - Comparison with the brief's targets (as recalibrated in M1-6 and M3-6) is reported honestly, including any misses.
 - *Dependencies:* M7-2.
 
-**M7-5 — v0.1.0 release and post-release plan**
-- *Description:* Publish, announce with the limitations clearly stated, and set up issue templates for bug reports and transcription-quality reports.
+**M7-5 — v0.1.0 tag and post-MVP backlog**
+- *Description:* Tag v0.1.0 and plan what comes next.
 - *Acceptance criteria:*
-  - The package is installable from PyPI.
-  - Release notes link to the accuracy and limitations pages.
-  - A triage owner and cadence are agreed.
-  - A post-MVP backlog is created from the Technical Design Document §15 and beta feedback.
+  - `v0.1.0` is tagged, with release notes that link to the accuracy and limitations pages.
+  - A post-MVP backlog is created from the Technical Design Document §15 and the trial.
 - *Dependencies:* M7-3, M7-4.
 
 ## Dependency summary
