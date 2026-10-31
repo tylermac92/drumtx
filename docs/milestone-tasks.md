@@ -162,7 +162,7 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 **Goal:** Replace the baseline with a learned detector that measurably beats it, and add optional drum isolation.
 
 **M2-1 — Obtain the model (per Q2)**
-- *Description:* Either integrate the chosen pretrained model, or build a reproducible training pipeline (config, data loaders, augmentation, CRNN with five outputs) and train on allowed data.
+- *Description:* Integrate the ADTOF pretrained model chosen in M0-4 (decision 0005): the feature extractor, and a documented command that converts the upstream checkpoint to ONNX. Training our own model (decision 0005 estimates the effort) is the fallback if the model falls short on your recordings.
 - *Acceptance criteria:*
   - The model beats the M1 baseline in per-class F-measure on the development set for kick, snare, and hi-hat.
   - Training, or conversion of the pretrained model, is reproducible from a documented command.
