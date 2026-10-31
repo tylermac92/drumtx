@@ -223,8 +223,9 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 **Goal:** Place events on a metrical grid and produce MIDI that lines up with the source audio.
 
 **M3-1 — Beat tracking and tempo map**
-- *Description:* Integrate the beat tracker chosen in M0-5. Build the `TempoMap`. Honor `--bpm`, `--time-signature` (N/4), and `--first-downbeat`.
+- *Description:* Integrate the beat tracker chosen in M0-5 (Beat This! through ONNX, decision 0006): log-mel features, chunked inference, and postprocessing in NumPy. Build the `TempoMap`. Honor `--bpm`, `--time-signature` (N/4), and `--first-downbeat`.
 - *Acceptance criteria:*
+  - On the development rhythm subset, beats match the upstream `beat_this` package within one frame; otherwise the PyTorch extra is used (decision 0006).
   - The tempo map is stored in `events.json`, with each value marked as estimated or user-supplied.
   - Overrides demonstrably change the result (tests).
   - Half-time and double-time results can be corrected through `--bpm` (test).
