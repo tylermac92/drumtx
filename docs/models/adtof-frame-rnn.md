@@ -76,7 +76,7 @@ uv run python scripts/check_features.py compare madmom.npz ~/drumtx-data/models/
 
 ## Development-set results
 
-All 189 development clips (107 minutes), `balanced`, compared with the classical baseline (`eval/results/baseline-dev.json`). Full results, with every preset and with precision and recall, are in `eval/results/adtof-dev.json`.
+All 189 development clips (107 minutes), `balanced`, with chunked inference (M2-2), compared with the classical baseline (`eval/results/baseline-dev.json`). Full results, with every preset and with precision and recall, are in `eval/results/adtof-dev.json`.
 
 ```bash
 uv run python scripts/benchmark.py --model adtof --compare eval/results/baseline-dev.json
@@ -86,16 +86,16 @@ Per-class F-measure, ADTOF / baseline:
 
 | Subset @ tolerance | Kick | Snare | Hi-hat | Tom | Cymbal |
 |---|---|---|---|---|---|
-| All @ 50 ms | **0.80** / 0.75 | **0.62** / 0.58 | **0.73** / 0.68 | **0.63** / 0.18 | **0.79** / 0.20 |
-| All @ 30 ms | **0.75** / 0.66 | **0.60** / 0.55 | **0.68** / 0.63 | **0.57** / 0.16 | **0.73** / 0.19 |
-| Drum-only @ 50 ms | **0.80** / 0.78 | **0.62** / 0.60 | **0.71** / 0.68 | **0.64** / 0.20 | **0.78** / 0.21 |
+| All @ 50 ms | **0.80** / 0.75 | **0.62** / 0.58 | **0.72** / 0.68 | **0.63** / 0.18 | **0.79** / 0.20 |
+| All @ 30 ms | **0.75** / 0.66 | **0.59** / 0.55 | **0.67** / 0.63 | **0.57** / 0.16 | **0.73** / 0.19 |
+| Drum-only @ 50 ms | **0.80** / 0.78 | **0.62** / 0.60 | **0.70** / 0.68 | **0.64** / 0.20 | **0.78** / 0.21 |
 | Full mix @ 50 ms | **0.84** / 0.44 | **0.66** / 0.42 | **0.89** / 0.74 | **0.22** / 0.01 | **0.84** / 0.13 |
 
 **M2-1's criterion is met:** at `balanced`, the model beats the baseline on every class, in every subset and at both tolerances.
 
 **Other presets.** `strict` snare is below the baseline's `strict` (0.52 vs 0.57 on all clips at 50 ms). The preset scaling is untuned until M2-3; the benchmark's `--compare` lists this as its only regressions.
 
-**Runtime.** 0.83 s per audio minute for features and chunked inference, on the 4-core sandbox, not the reference machine.
+**Runtime.** 0.84 s per audio minute for features and chunked inference, on the 4-core sandbox, not the reference machine.
 
 ### By source (`balanced`, 50 ms)
 
