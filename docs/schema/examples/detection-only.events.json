@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source": {"file": "groove.wav", "sha256": "954875e08e6eaf12b22ef38be12dc646adb7afdc52ec7beef51d407d05243453", "duration_s": 4.75, "start_s": null, "end_s": null},
+  "settings": {"sensitivity": "balanced", "separate": false, "grid": "auto", "bpm": null, "time_signature": "4/4", "first_downbeat": null},
+  "models": {"detector": "adtof-frame-rnn", "beat_tracker": null, "separator": null},
+  "csv_sha256": "281e33ea4ac62a9ccb36254ffb6d85b45a53736827bbbf23d67314c9261e0ccc",
+  "tempo_map": {
+    "beats": [],
+    "time_signatures": [{"measure": 1, "beats": 4, "beat_type": 4}],
+    "tempo_source": "estimated",
+    "time_signature_source": "default",
+    "first_downbeat_source": "estimated"
+  },
+  "events": [
+    {"time_s": 0.496, "class": "hihat", "confidence": 0.78, "velocity": 73, "quantized": null, "flags": []},
+    {"time_s": 0.502, "class": "kick", "confidence": 0.96, "velocity": 83, "quantized": null, "flags": []},
+    {"time_s": 0.74, "class": "hihat", "confidence": 0.87, "velocity": 93, "quantized": null, "flags": []},
+    {"time_s": 0.989, "class": "hihat", "confidence": 0.85, "velocity": 74, "quantized": null, "flags": []},
+    {"time_s": 1.008, "class": "snare", "confidence": 0.78, "velocity": 84, "quantized": null, "flags": []},
+    {"time_s": 1.244, "class": "hihat", "confidence": 0.88, "velocity": 73, "quantized": null, "flags": []},
+    {"time_s": 1.489, "class": "kick", "confidence": 0.95, "velocity": 88, "quantized": null, "flags": []},
+    {"time_s": 1.503, "class": "hihat", "confidence": 0.88, "velocity": 73, "quantized": null, "flags": []},
+    {"time_s": 1.752, "class": "hihat", "confidence": 0.84, "velocity": 84, "quantized": null, "flags": []},
+    {"time_s": 1.99, "class": "snare", "confidence": 0.88, "velocity": 82, "quantized": null, "flags": []},
+    {"time_s": 1.998, "class": "hihat", "confidence": 0.87, "velocity": 106, "quantized": null, "flags": []},
+    {"time_s": 2.245, "class": "hihat", "confidence": 0.94, "velocity": 81, "quantized": null, "flags": []},
+    {"time_s": 2.497, "class": "hihat", "confidence": 0.88, "velocity": 74, "quantized": null, "flags": []},
+    {"time_s": 2.504, "class": "kick", "confidence": 0.85, "velocity": 90, "quantized": null, "flags": []},
+    {"time_s": 2.752, "class": "hihat", "confidence": 0.89, "velocity": 101, "quantized": null, "flags": []},
+    {"time_s": 2.99, "class": "snare", "confidence": 0.82, "velocity": 101, "quantized": null, "flags": []},
+    {"time_s": 2.999, "class": "hihat", "confidence": 0.96, "velocity": 93, "quantized": null, "flags": []},
+    {"time_s": 3.245, "class": "hihat", "confidence": 0.41, "velocity": 85, "quantized": null, "flags": []},
+    {"time_s": 3.498, "class": "kick", "confidence": 0.92, "velocity": 79, "quantized": null, "flags": []},
+    {"time_s": 3.509, "class": "hihat", "confidence": 0.92, "velocity": 88, "quantized": null, "flags": []},
+    {"time_s": 3.753, "class": "hihat", "confidence": 0.77, "velocity": 102, "quantized": null, "flags": []},
+    {"time_s": 3.76, "class": "kick", "confidence": 0.85, "velocity": 74, "quantized": null, "flags": []},
+    {"time_s": 3.996, "class": "hihat", "confidence": 0.83, "velocity": 101, "quantized": null, "flags": []},
+    {"time_s": 4.006, "class": "snare", "confidence": 0.88, "velocity": 90, "quantized": null, "flags": []},
+    {"time_s": 4.169, "class": "hihat", "confidence": 0.85, "velocity": 75, "quantized": null, "flags": []},
+    {"time_s": 4.344, "class": "hihat", "confidence": 0.86, "velocity": 74, "quantized": null, "flags": []}
+  ],
+  "measure_flags": []
+}

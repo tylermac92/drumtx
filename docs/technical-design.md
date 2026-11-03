@@ -157,8 +157,8 @@ Note: automatic transcription contains errors. Check flagged measures first.
 |---|---|---|
 | `<name>.musicxml` | MusicXML 4.0, uncompressed | One percussion part on a five-line staff. Voice 1 (stems up): hands (hi-hat, snare, tom, cymbal). Voice 2 (stems down): kick. One time signature and one tempo marking (median tempo). Grid of 16ths and 8th-note triplets, using `divisions = 12` per quarter note. Cymbal and hi-hat noteheads are x. |
 | `<name>.mid` | Standard MIDI File type 1, channel 10, General MIDI drum notes | Tempo changes at every beat, so quantized notes line up with the original audio in a DAW. `--midi-timing performance` writes raw times instead. |
-| `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model ID, tempo map, events with confidence, velocity, quantized position, and review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
-| `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
+| `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model IDs, tempo map, events with confidence, velocity, quantized position, and review flags, per-measure review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
+| `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` (`docs/schema/events-v1.md`) | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
 | `<name>.report.md` | Markdown | Settings, tempo summary, per-class counts, flagged measures with timestamps, known limitations. |
 | `<name>.preview.wav` | WAV, from `drumtx preview` only | Original audio plus synthesized hits (drum sounds generated in code). |
 
@@ -250,9 +250,11 @@ Drum notation conventions vary between publishers. The mapping is documented in 
 
 ### Example event (excerpt from `events.json`)
 
+The full format is specified in `docs/schema/events-v1.md`.
+
 ```json
 {
-  "id": 214, "time_s": 52.371, "class": "snare", "confidence": 0.58, "velocity": 71,
+  "time_s": 52.371, "class": "snare", "confidence": 0.58, "velocity": 71,
   "quantized": {"measure": 26, "beat": 2, "grid": "16th", "slot": 2, "residual_ms": 12.4, "residual_frac": 0.1},
   "flags": ["uncertain"]
 }

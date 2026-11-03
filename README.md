@@ -1,6 +1,6 @@
 # drumtx
 
-Command-line drum transcription from audio to editable notation. A personal project; see `docs/` for the brief, design, and milestone plan.
+Command-line drum transcription from audio to editable notation. A personal project; see `docs/` for the brief, design, and milestone plan. The output formats (`events.json`, `events.csv`, the instrument mapping) are specified in `docs/schema/events-v1.md`.
 
 **Status:** M0 (project skeleton). Every command is a stub that exits with "not implemented yet".
 

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "source": {"file": "groove.wav", "sha256": "954875e08e6eaf12b22ef38be12dc646adb7afdc52ec7beef51d407d05243453", "duration_s": 4.75, "start_s": null, "end_s": null},
+  "settings": {"sensitivity": "balanced", "separate": false, "grid": "auto", "bpm": null, "time_signature": "4/4", "first_downbeat": null},
+  "models": {"detector": "adtof-frame-rnn", "beat_tracker": "beat-this-final0", "separator": null},
+  "csv_sha256": "281e33ea4ac62a9ccb36254ffb6d85b45a53736827bbbf23d67314c9261e0ccc",
+  "tempo_map": {
+    "beats": [
+      {"time_s": 0.5, "measure": 1, "beat": 1},
+      {"time_s": 1.0, "measure": 1, "beat": 2},
+      {"time_s": 1.5, "measure": 1, "beat": 3},
+      {"time_s": 2.0, "measure": 1, "beat": 4},
+      {"time_s": 2.5, "measure": 2, "beat": 1},
+      {"time_s": 3.0, "measure": 2, "beat": 2},
+      {"time_s": 3.5, "measure": 2, "beat": 3},
+      {"time_s": 4.0, "measure": 2, "beat": 4}
+    ],
+    "time_signatures": [{"measure": 1, "beats": 4, "beat_type": 4}],
+    "tempo_source": "estimated",
+    "time_signature_source": "default",
+    "first_downbeat_source": "estimated"
+  },
+  "events": [
+    {"time_s": 0.496, "class": "hihat", "confidence": 0.78, "velocity": 73, "quantized": {"measure": 1, "beat": 1, "grid": "16th", "slot": 1, "residual_ms": -4.0, "residual_frac": -0.032}, "flags": []},
+    {"time_s": 0.502, "class": "kick", "confidence": 0.96, "velocity": 83, "quantized": {"measure": 1, "beat": 1, "grid": "16th", "slot": 1, "residual_ms": 2.0, "residual_frac": 0.016}, "flags": []},
+    {"time_s": 0.74, "class": "hihat", "confidence": 0.87, "velocity": 93, "quantized": {"measure": 1, "beat": 1, "grid": "16th", "slot": 3, "residual_ms": -10.0, "residual_frac": -0.08}, "flags": []},
+    {"time_s": 0.989, "class": "hihat", "confidence": 0.85, "velocity": 74, "quantized": {"measure": 1, "beat": 2, "grid": "16th", "slot": 1, "residual_ms": -11.0, "residual_frac": -0.088}, "flags": []},
+    {"time_s": 1.008, "class": "snare", "confidence": 0.78, "velocity": 84, "quantized": {"measure": 1, "beat": 2, "grid": "16th", "slot": 1, "residual_ms": 8.0, "residual_frac": 0.064}, "flags": []},
+    {"time_s": 1.244, "class": "hihat", "confidence": 0.88, "velocity": 73, "quantized": {"measure": 1, "beat": 2, "grid": "16th", "slot": 3, "residual_ms": -6.0, "residual_frac": -0.048}, "flags": []},
+    {"time_s": 1.489, "class": "kick", "confidence": 0.95, "velocity": 88, "quantized": {"measure": 1, "beat": 3, "grid": "16th", "slot": 1, "residual_ms": -11.0, "residual_frac": -0.088}, "flags": []},
+    {"time_s": 1.503, "class": "hihat", "confidence": 0.88, "velocity": 73, "quantized": {"measure": 1, "beat": 3, "grid": "16th", "slot": 1, "residual_ms": 3.0, "residual_frac": 0.024}, "flags": []},
+    {"time_s": 1.752, "class": "hihat", "confidence": 0.84, "velocity": 84, "quantized": {"measure": 1, "beat": 3, "grid": "16th", "slot": 3, "residual_ms": 2.0, "residual_frac": 0.016}, "flags": []},
+    {"time_s": 1.99, "class": "snare", "confidence": 0.88, "velocity": 82, "quantized": {"measure": 1, "beat": 4, "grid": "16th", "slot": 1, "residual_ms": -10.0, "residual_frac": -0.08}, "flags": ["merged"]},
+    {"time_s": 1.998, "class": "hihat", "confidence": 0.87, "velocity": 106, "quantized": {"measure": 1, "beat": 4, "grid": "16th", "slot": 1, "residual_ms": -2.0, "residual_frac": -0.016}, "flags": []},
+    {"time_s": 2.245, "class": "hihat", "confidence": 0.94, "velocity": 81, "quantized": {"measure": 1, "beat": 4, "grid": "16th", "slot": 3, "residual_ms": -5.0, "residual_frac": -0.04}, "flags": []},
+    {"time_s": 2.497, "class": "hihat", "confidence": 0.88, "velocity": 74, "quantized": {"measure": 2, "beat": 1, "grid": "16th", "slot": 1, "residual_ms": -3.0, "residual_frac": -0.024}, "flags": []},
+    {"time_s": 2.504, "class": "kick", "confidence": 0.85, "velocity": 90, "quantized": {"measure": 2, "beat": 1, "grid": "16th", "slot": 1, "residual_ms": 4.0, "residual_frac": 0.032}, "flags": []},
+    {"time_s": 2.752, "class": "hihat", "confidence": 0.89, "velocity": 101, "quantized": {"measure": 2, "beat": 1, "grid": "16th", "slot": 3, "residual_ms": 2.0, "residual_frac": 0.016}, "flags": []},
+    {"time_s": 2.99, "class": "snare", "confidence": 0.82, "velocity": 101, "quantized": {"measure": 2, "beat": 2, "grid": "16th", "slot": 1, "residual_ms": -10.0, "residual_frac": -0.08}, "flags": []},
+    {"time_s": 2.999, "class": "hihat", "confidence": 0.96, "velocity": 93, "quantized": {"measure": 2, "beat": 2, "grid": "16th", "slot": 1, "residual_ms": -1.0, "residual_frac": -0.008}, "flags": []},
+    {"time_s": 3.245, "class": "hihat", "confidence": 0.41, "velocity": 85, "quantized": {"measure": 2, "beat": 2, "grid": "16th", "slot": 3, "residual_ms": -5.0, "residual_frac": -0.04}, "flags": ["uncertain"]},
+    {"time_s": 3.498, "class": "kick", "confidence": 0.92, "velocity": 79, "quantized": {"measure": 2, "beat": 3, "grid": "16th", "slot": 1, "residual_ms": -2.0, "residual_frac": -0.016}, "flags": []},
+    {"time_s": 3.509, "class": "hihat", "confidence": 0.92, "velocity": 88, "quantized": {"measure": 2, "beat": 3, "grid": "16th", "slot": 1, "residual_ms": 9.0, "residual_frac": 0.072}, "flags": []},
+    {"time_s": 3.753, "class": "hihat", "confidence": 0.77, "velocity": 102, "quantized": {"measure": 2, "beat": 3, "grid": "16th", "slot": 3, "residual_ms": 3.0, "residual_frac": 0.024}, "flags": []},
+    {"time_s": 3.76, "class": "kick", "confidence": 0.85, "velocity": 74, "quantized": {"measure": 2, "beat": 3, "grid": "16th", "slot": 3, "residual_ms": 10.0, "residual_frac": 0.08}, "flags": []},
+    {"time_s": 3.996, "class": "hihat", "confidence": 0.83, "velocity": 101, "quantized": {"measure": 2, "beat": 4, "grid": "triplet", "slot": 1, "residual_ms": -4.0, "residual_frac": -0.024}, "flags": []},
+    {"time_s": 4.006, "class": "snare", "confidence": 0.88, "velocity": 90, "quantized": {"measure": 2, "beat": 4, "grid": "triplet", "slot": 1, "residual_ms": 6.0, "residual_frac": 0.036}, "flags": []},
+    {"time_s": 4.169, "class": "hihat", "confidence": 0.85, "velocity": 75, "quantized": {"measure": 2, "beat": 4, "grid": "triplet", "slot": 2, "residual_ms": 2.3, "residual_frac": 0.014}, "flags": []},
+    {"time_s": 4.344, "class": "hihat", "confidence": 0.86, "velocity": 74, "quantized": {"measure": 2, "beat": 4, "grid": "triplet", "slot": 3, "residual_ms": 10.7, "residual_frac": 0.064}, "flags": []}
+  ],
+  "measure_flags": [{"measure": 1, "flags": ["merged"]}, {"measure": 2, "flags": ["uncertain"]}]
+}
