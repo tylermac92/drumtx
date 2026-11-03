@@ -1,6 +1,6 @@
 # Model card: ADTOF Frame_RNN (`adtof`)
 
-- **Status:** integrated in M2-1 and chunked in M2-2, 2026-11-03. Tuned presets (M2-3), calibrated confidence (M2-4), download on first use (M2-5) and the test-set results (M2-7) are still to come.
+- **Status:** integrated in M2-1, chunked in M2-2 and its presets tuned in M2-3, 2026-11-03. Calibrated confidence (M2-4), download on first use (M2-5) and the test-set results (M2-7) are still to come.
 - **Chosen in:** decision 0005.
 
 ## What it is
@@ -14,9 +14,42 @@ The `Frame_RNN_adtofAll_0` checkpoint from [ADTOF](https://github.com/MZehren/AD
 | Input | (frames, 84) log-filtered spectrogram at 100 fps, from mono 44.1 kHz audio (`drumtx.features`) |
 | Network | 2 × (two 3×3 convolutions with batch norm, max pool over frequency), 3 bidirectional GRUs of 60 units, dense layer with sigmoid. 450,125 parameters. |
 | Output | (frames, 5) onset probabilities in ADTOF's order: kick, snare, tom, hi-hat, cymbal (GM notes 35, 38, 47, 42, 49) |
-| Peak picking | madmom's note peak picking with ADTOF's settings (`detect.pick_peaks`); peaks within 20 ms combined. ADTOF's `labelOffset` is 0 for this model, so no time shift. |
-| Thresholds (`balanced`) | ADTOF's own: kick 0.22, snare 0.24, tom 0.32, hi-hat 0.22, cymbal 0.30. `strict` and `sensitive` scale them by 1.5 and 0.67 (not tuned yet; M2-3). |
+| Peak picking | madmom's note peak picking with ADTOF's settings (`detect.pick_peaks`). Per-class thresholds and the minimum gap come from the preset (below). ADTOF's `labelOffset` is 0 for this model, so no time shift. |
 | Confidence and velocity | Not calibrated yet (M2-4): `p / (p + threshold)`, and velocity = 127 × confidence. |
+
+## Presets
+
+`--sensitivity` chooses one of three sets of per-class thresholds. They are stored with the model in `src/drumtx/models/adtof.json` and tuned on the development set only:
+
+```bash
+uv run python scripts/benchmark.py --model adtof --tune
+```
+
+| Preset | Use it when | Kick | Snare | Hi-hat | Tom | Cymbal |
+|---|---|---|---|---|---|---|
+| `strict` | You would rather add missed notes than delete wrong ones | 0.318 | 0.100 | 0.283 | 0.357 | 0.401 |
+| `balanced` (default) | Best overall accuracy | 0.201 | 0.050 | 0.159 | 0.253 | 0.283 |
+| `sensitive` | You would rather delete wrong notes than add missed ones, e.g. for ghost notes | 0.045 | 0.018 | 0.028 | 0.159 | 0.159 |
+
+(ADTOF's own thresholds were kick 0.22, snare 0.24, tom 0.32, hi-hat 0.22, cymbal 0.30.)
+
+**How they were tuned.**
+- **Grid:** 39 thresholds from 0.01 to 0.8, spaced evenly on a log scale.
+- **Score:** each threshold is scored by F-beta, with β = 0.5 for `strict` (weights precision), 1 for `balanced` and 2 for `sensitive` (weights recall).
+- **Subset weighting:** the score is averaged over the drum-only and full-mix subsets, so the many E-GMD clips do not decide alone (decision 0004). Toms use drum-only alone, since the full mixes have only 15 tom hits (decision 0010).
+- **Minimum gap:** chosen the same way from 20, 30, 40 and 50 ms. They score almost the same; 30 ms won narrowly.
+
+**Precision and recall** (all development clips, 50 ms):
+
+| Preset | Kick P / R | Snare P / R | Hi-hat P / R | Tom P / R | Cymbal P / R |
+|---|---|---|---|---|---|
+| `strict` | 0.96 / 0.63 | 0.91 / 0.64 | 0.93 / 0.56 | 0.70 / 0.53 | 0.93 / 0.64 |
+| `balanced` | 0.94 / 0.71 | 0.85 / 0.74 | 0.88 / 0.64 | 0.57 / 0.70 | 0.90 / 0.70 |
+| `sensitive` | 0.81 / 0.82 | 0.67 / 0.81 | 0.72 / 0.76 | 0.46 / 0.80 | 0.83 / 0.75 |
+
+**M2-3's criterion is met:** `strict` has higher precision and `sensitive` higher recall than `balanced` for every class. This holds on all clips, and on the drum-only and full-mix subsets separately. The one exception is full-mix toms, where recall ties at 14 of 15 hits.
+
+**Trade-off: the low snare threshold.** It recovers many quiet E-GMD notes (snare F 0.57 → 0.80) but adds false hits on IDMT's simple patterns (0.89 → 0.75). The curve is flat between thresholds 0.05 and 0.09. Weighting the three sources equally would choose about 0.07: E-GMD 0.78, MDB 0.75, IDMT 0.80. Revisit this with your own recordings in M7-1.
 
 ## Files
 
@@ -76,7 +109,7 @@ uv run python scripts/check_features.py compare madmom.npz ~/drumtx-data/models/
 
 ## Development-set results
 
-All 189 development clips (107 minutes), `balanced`, with chunked inference (M2-2), compared with the classical baseline (`eval/results/baseline-dev.json`). Full results, with every preset and with precision and recall, are in `eval/results/adtof-dev.json`.
+All 189 development clips (107 minutes), `balanced`, with chunked inference (M2-2) and tuned presets (M2-3), compared with the classical baseline (`eval/results/baseline-dev.json`). Full results, with every preset and with precision and recall, are in `eval/results/adtof-dev.json`.
 
 ```bash
 uv run python scripts/benchmark.py --model adtof --compare eval/results/baseline-dev.json
@@ -86,14 +119,18 @@ Per-class F-measure, ADTOF / baseline:
 
 | Subset @ tolerance | Kick | Snare | Hi-hat | Tom | Cymbal |
 |---|---|---|---|---|---|
-| All @ 50 ms | **0.80** / 0.75 | **0.62** / 0.58 | **0.72** / 0.68 | **0.63** / 0.18 | **0.79** / 0.20 |
-| All @ 30 ms | **0.75** / 0.66 | **0.59** / 0.55 | **0.67** / 0.63 | **0.57** / 0.16 | **0.73** / 0.19 |
-| Drum-only @ 50 ms | **0.80** / 0.78 | **0.62** / 0.60 | **0.70** / 0.68 | **0.64** / 0.20 | **0.78** / 0.21 |
-| Full mix @ 50 ms | **0.84** / 0.44 | **0.66** / 0.42 | **0.89** / 0.74 | **0.22** / 0.01 | **0.84** / 0.13 |
+| All @ 50 ms | **0.81** / 0.75 | **0.79** / 0.58 | **0.74** / 0.68 | **0.63** / 0.18 | **0.79** / 0.20 |
+| All @ 30 ms | **0.75** / 0.66 | **0.76** / 0.55 | **0.69** / 0.63 | **0.57** / 0.16 | **0.74** / 0.19 |
+| Drum-only @ 50 ms | **0.80** / 0.78 | **0.79** / 0.60 | **0.72** / 0.68 | **0.64** / 0.20 | **0.79** / 0.21 |
+| Full mix @ 50 ms | **0.84** / 0.44 | **0.75** / 0.42 | **0.89** / 0.74 | **0.16** / 0.01 | **0.84** / 0.13 |
 
-**M2-1's criterion is met:** at `balanced`, the model beats the baseline on every class, in every subset and at both tolerances.
+**M2-1's criterion still holds:** at `balanced`, the model beats the baseline on every class, in every subset and at both tolerances.
 
-**Other presets.** `strict` snare is below the baseline's `strict` (0.52 vs 0.57 on all clips at 50 ms). The preset scaling is untuned until M2-3; the benchmark's `--compare` lists this as its only regressions.
+**Compared with ADTOF's own thresholds (M2-2):**
+- **Snare:** F rose from 0.62 to 0.79 on all clips, and from 0.66 to 0.75 on full mixes.
+- **Other classes:** within ±0.02.
+- **Full-mix toms:** fell from 0.22 to 0.16 (15 hits, reported only).
+- **`sensitive`:** loses F on full mixes (kick 0.82 → 0.74, hi-hat 0.89 → 0.79), the price of its higher recall.
 
 **Runtime.** 0.84 s per audio minute for features and chunked inference, on the 4-core sandbox, not the reference machine.
 
@@ -101,24 +138,24 @@ Per-class F-measure, ADTOF / baseline:
 
 | Source | Kick | Snare | Hi-hat | Tom | Cymbal |
 |---|---|---|---|---|---|
-| E-GMD (drum-only) | 0.75 | 0.57 | 0.61 | 0.65 | 0.78 |
-| MDB Drums, drum-only | 0.96 | 0.74 | 0.90 | 0.13 (15 hits) | 0.89 |
-| MDB Drums, full mix | 0.84 | 0.66 | 0.89 | 0.22 (15 hits) | 0.84 |
-| IDMT-SMT-Drums | 0.99 | 0.89 | 0.96 | — | — |
+| E-GMD (drum-only) | 0.76 | 0.80 | 0.64 | 0.67 | 0.78 |
+| MDB Drums, drum-only | 0.96 | 0.76 | 0.91 | 0.07 (15 hits) | 0.90 |
+| MDB Drums, full mix | 0.84 | 0.75 | 0.89 | 0.16 (15 hits) | 0.84 |
+| IDMT-SMT-Drums | 0.99 | 0.75 | 0.97 | — | — |
 
 ## Known failure modes
 
-- **Quiet notes are missed.** On E-GMD, precision is 0.89–0.99 for every class except tom, but recall is 0.40–0.67. Recall falls with the note's velocity:
+- **Quiet notes are missed.** On E-GMD at `balanced`, precision is 0.87–0.95 for every class except tom, but recall is 0.50–0.71. Recall falls with the note's velocity:
 
   | E-GMD velocity | Kick | Snare | Hi-hat | Tom | Cymbal |
   |---|---|---|---|---|---|
-  | below 40 | 0.19 | 0.07 | 0.22 | 0.00 | 0.12 |
-  | 40–79 | 0.73 | 0.27 | 0.48 | 0.41 | 0.65 |
-  | 80 and above | 0.99 | 0.74 | 0.64 | 0.70 | 0.89 |
+  | below 40 | 0.20 | 0.37 | 0.26 | 0.03 | 0.13 |
+  | 40–79 | 0.75 | 0.75 | 0.53 | 0.55 | 0.65 |
+  | 80 and above | 0.99 | 0.91 | 0.66 | 0.80 | 0.89 |
 
-  Rhythm-game charts, which the model was trained on, mostly leave out ghost notes. E-GMD is most of the development set (by hits), so this pulls down every development-set number, most of all snare. M2-3 should tune the thresholds lower to see how much recall comes back.
-- **E-GMD hi-hat stays weak even when loud** (recall 0.64), as decision 0005 found: probably pedal and kit-specific hi-hats.
-- **Toms in MDB are mostly false positives** (precision 0.07–0.13 on only 15 reference hits), so those numbers mean little (decision 0004).
+  Rhythm-game charts, which the model was trained on, mostly leave out ghost notes. E-GMD is most of the development set (by hits), so this pulls down every development-set number. M2-3's lower snare threshold brought back most mid-velocity snare notes (recall 0.27 → 0.75). `sensitive` recovers more, at the cost of precision.
+- **E-GMD hi-hat stays weak even when loud** (recall 0.66), as decision 0005 found: probably pedal and kit-specific hi-hats.
+- **Toms in MDB are mostly false positives** (precision 0.04–0.09 on only 15 reference hits), so those numbers mean little (decision 0004).
 
 ## Fallback
 

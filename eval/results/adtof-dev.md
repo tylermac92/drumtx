@@ -1,29 +1,29 @@
 # Benchmark: `adtof` on the dev set
 
-- Commit: `0eb83b1e376c33aa7a825f894147f952dec6530d`
+- Commit: `9902c7a81896f38de87807bd64ef74af37184e82`
 - Date: 2026-11-03
 - Clips: 189 (107.4 minutes of audio)
-- Detection runtime: 269.9 s (0.84 s per audio minute, all presets)
+- Detection runtime: 273.1 s (0.85 s per audio minute, all presets)
 
 F-measure per class:
 
 | Preset | Subset @ tolerance | kick | snare | hihat | tom | cymbal |
 |---|---|---|---|---|---|---|
-| strict | drum-only @ 50 ms | 0.75 | 0.51 | 0.65 | 0.36 | 0.73 |
-| strict | drum-only @ 30 ms | 0.69 | 0.48 | 0.60 | 0.32 | 0.67 |
-| strict | full-mix @ 50 ms | 0.84 | 0.62 | 0.89 | 0.41 | 0.80 |
-| strict | full-mix @ 30 ms | 0.83 | 0.62 | 0.88 | 0.41 | 0.79 |
-| strict | all @ 50 ms | 0.76 | 0.52 | 0.68 | 0.36 | 0.73 |
-| strict | all @ 30 ms | 0.70 | 0.50 | 0.64 | 0.33 | 0.68 |
-| balanced | drum-only @ 50 ms | 0.80 | 0.62 | 0.70 | 0.64 | 0.78 |
-| balanced | drum-only @ 30 ms | 0.74 | 0.59 | 0.65 | 0.58 | 0.72 |
-| balanced | full-mix @ 50 ms | 0.84 | 0.66 | 0.89 | 0.22 | 0.84 |
-| balanced | full-mix @ 30 ms | 0.83 | 0.65 | 0.89 | 0.22 | 0.82 |
-| balanced | all @ 50 ms | 0.80 | 0.62 | 0.72 | 0.63 | 0.79 |
-| balanced | all @ 30 ms | 0.75 | 0.59 | 0.67 | 0.57 | 0.73 |
-| sensitive | drum-only @ 50 ms | 0.82 | 0.69 | 0.73 | 0.63 | 0.79 |
-| sensitive | drum-only @ 30 ms | 0.76 | 0.66 | 0.67 | 0.57 | 0.73 |
-| sensitive | full-mix @ 50 ms | 0.82 | 0.70 | 0.89 | 0.13 | 0.83 |
-| sensitive | full-mix @ 30 ms | 0.81 | 0.69 | 0.88 | 0.13 | 0.81 |
-| sensitive | all @ 50 ms | 0.82 | 0.69 | 0.74 | 0.62 | 0.79 |
-| sensitive | all @ 30 ms | 0.76 | 0.66 | 0.69 | 0.56 | 0.74 |
+| strict | drum-only @ 50 ms | 0.76 | 0.76 | 0.68 | 0.61 | 0.75 |
+| strict | drum-only @ 30 ms | 0.70 | 0.73 | 0.63 | 0.55 | 0.69 |
+| strict | full-mix @ 50 ms | 0.85 | 0.73 | 0.89 | 0.25 | 0.83 |
+| strict | full-mix @ 30 ms | 0.84 | 0.72 | 0.89 | 0.25 | 0.81 |
+| strict | all @ 50 ms | 0.76 | 0.75 | 0.70 | 0.60 | 0.76 |
+| strict | all @ 30 ms | 0.71 | 0.73 | 0.66 | 0.55 | 0.70 |
+| balanced | drum-only @ 50 ms | 0.80 | 0.79 | 0.72 | 0.64 | 0.79 |
+| balanced | drum-only @ 30 ms | 0.74 | 0.76 | 0.67 | 0.58 | 0.73 |
+| balanced | full-mix @ 50 ms | 0.84 | 0.75 | 0.89 | 0.16 | 0.84 |
+| balanced | full-mix @ 30 ms | 0.83 | 0.73 | 0.89 | 0.16 | 0.83 |
+| balanced | all @ 50 ms | 0.81 | 0.79 | 0.74 | 0.63 | 0.79 |
+| balanced | all @ 30 ms | 0.75 | 0.76 | 0.69 | 0.57 | 0.74 |
+| sensitive | drum-only @ 50 ms | 0.82 | 0.74 | 0.73 | 0.60 | 0.79 |
+| sensitive | drum-only @ 30 ms | 0.76 | 0.71 | 0.67 | 0.54 | 0.73 |
+| sensitive | full-mix @ 50 ms | 0.74 | 0.72 | 0.79 | 0.09 | 0.82 |
+| sensitive | full-mix @ 30 ms | 0.73 | 0.68 | 0.78 | 0.09 | 0.80 |
+| sensitive | all @ 50 ms | 0.82 | 0.73 | 0.74 | 0.58 | 0.79 |
+| sensitive | all @ 30 ms | 0.75 | 0.71 | 0.68 | 0.53 | 0.74 |
