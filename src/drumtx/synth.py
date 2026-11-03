@@ -4,6 +4,8 @@ Used for test fixtures (M1-5) and the audio preview (M5-2). Each sound is determ
 most of its energy in its class's band in `detect.BANDS_HZ`. They are stand-ins, not realistic kits.
 """
 
+from collections.abc import Iterable
+
 import numpy as np
 
 from drumtx.ingest import SAMPLE_RATE
@@ -45,3 +47,13 @@ def drum_hit(cls: DrumClass, velocity: int = 100) -> np.ndarray:
     y[:32] *= np.linspace(0, 1, 32)  # 0.7 ms fade-in avoids a click in every band
     out: np.ndarray = (y / np.abs(y).max() * velocity / 127).astype(np.float32)
     return out
+
+
+def render(hits: Iterable[tuple[float, DrumClass, int]], seconds: float) -> np.ndarray:
+    """Mix (time_s, class, velocity) hits into mono float32 audio. Overlaps add, unclipped."""
+    y = np.zeros(round(seconds * SAMPLE_RATE), np.float32)
+    for time_s, cls, velocity in hits:
+        start = round(time_s * SAMPLE_RATE)
+        h = drum_hit(cls, velocity)[: max(0, len(y) - start)]
+        y[start : start + len(h)] += h
+    return y
