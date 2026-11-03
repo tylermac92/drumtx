@@ -2,3 +2,5 @@
 eval/*.csv -text
 # Golden files are compared byte for byte; keep LF line endings on every OS.
 tests/golden/* -text
+# Example files carry the hash of the example CSV; keep LF line endings on every OS.
+docs/schema/examples/* -text

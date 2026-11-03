@@ -1,0 +1,42 @@
+# DrumTx default instrument mapping (Technical Design Document §5).
+# Copy this file, edit it, and pass it with --mapping. One table per class:
+#   name       instrument name in the MusicXML part
+#   midi_note  General MIDI drum note, written on channel 10
+#   display    staff position as step and octave, read as on a treble clef
+#   notehead   "normal" or "x"
+#   voice      1 (stems up, hands) or 2 (stems down, feet)
+
+[kick]
+name = "Kick"
+midi_note = 36
+display = "F4"
+notehead = "normal"
+voice = 2
+
+[snare]
+name = "Snare"
+midi_note = 38
+display = "C5"
+notehead = "normal"
+voice = 1
+
+[hihat]
+name = "Hi-hat"
+midi_note = 42
+display = "G5"
+notehead = "x"
+voice = 1
+
+[tom]
+name = "Tom"
+midi_note = 47
+display = "D5"
+notehead = "normal"
+voice = 1
+
+[cymbal]
+name = "Cymbal"
+midi_note = 49
+display = "A5"
+notehead = "x"
+voice = 1
