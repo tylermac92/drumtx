@@ -1,13 +1,16 @@
-"""M2-1: ADTOF input features, and ModelDetector run on a stand-in ONNX model.
+"""M2-1 and M2-2: ADTOF input features, and ModelDetector run on a stand-in ONNX model.
 
 The real model is never in the repository (decision 0005); its accuracy is checked by the
 benchmark (eval/results/adtof-dev.json) and its features against madmom (the model card).
 """
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import onnx
+import pytest
 from onnx import TensorProto, helper
 
 from drumtx import detect, features
@@ -54,3 +57,39 @@ def test_model_detector_maps_outputs_to_classes(tmp_path: Path) -> None:
     events = detect.ModelDetector(tmp_path / "m.onnx").detect(buf)
     assert [(e.time_s, e.cls) for e in events] == [(3.0, "tom")]
     assert 0.5 < events[0].confidence <= 1 and 1 <= events[0].velocity <= 127
+
+
+def test_chunks_are_stitched_without_duplicate_or_missed_peaks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With small chunks, clicks on and next to chunk boundaries are each found exactly once."""
+    monkeypatch.setattr(detect, "MODEL_CHUNK", 50)
+    monkeypatch.setattr(detect, "MODEL_CONTEXT", 7)
+    stand_in_model(tmp_path / "m.onnx")
+    detector = detect.ModelDetector(tmp_path / "m.onnx")
+    frames = [50, 99, 150, 199]  # chunks are frames 0–49, 50–99, 100–149 and 150–199
+    y = np.zeros(2 * SAMPLE_RATE, np.float32)
+    y[[f * features.HOP for f in frames]] = 1.0
+    x = features.spectrogram(y)
+    whole = detector.session.run(None, {"x": x[None]})[0][0]
+    chunked = detector.activations(x)
+    for i, c in enumerate(detect.MODEL_ORDER):
+        np.testing.assert_array_equal(chunked[c], whole[:, i])
+    events = detect.ModelDetector(tmp_path / "m.onnx").detect(AudioBuffer(y[:, None], 0.0, 2.0))
+    assert [e.time_s for e in events] == [0.5, 0.99, 1.5, 1.99]
+
+
+def test_ten_minutes_run_in_bounded_windows(tmp_path: Path) -> None:
+    stand_in_model(tmp_path / "m.onnx")
+    detector = detect.ModelDetector(tmp_path / "m.onnx")
+    sizes: list[int] = []
+    run = detector.session.run
+
+    def spy(names: Any, feeds: dict[str, np.ndarray]) -> Any:
+        sizes.append(feeds["x"].shape[1])
+        return run(names, feeds)
+
+    detector.session = SimpleNamespace(run=spy)
+    acts = detector.activations(np.zeros((600 * detect.FPS, 84), np.float32))
+    assert all(len(a) == 600 * detect.FPS for a in acts.values())
+    assert max(sizes) == detect.MODEL_CHUNK + 2 * detect.MODEL_CONTEXT

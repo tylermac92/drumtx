@@ -53,6 +53,10 @@ MODEL_THRESHOLDS: dict[DrumClass, float] = {
     "cymbal": 0.30,
 }
 MODEL_MIN_GAP_S = 0.02
+# Chunked inference: frames kept per network run, and context frames discarded on each side
+# (ADTOF's warm-up). Effect on memory and accuracy: docs/models/adtof-frame-rnn.md.
+MODEL_CHUNK = 6000
+MODEL_CONTEXT = 400
 
 
 class Detector(Protocol):
@@ -135,8 +139,17 @@ class ModelDetector:
         self.session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
 
     def activations(self, spectrogram: np.ndarray) -> dict[DrumClass, np.ndarray]:
-        # shortcut: the whole file in one run; M2-2 adds chunked inference to bound memory.
-        y = self.session.run(None, {"x": spectrogram[None]})[0][0]
+        """Run the network over overlapping windows, to bound memory.
+
+        Each window adds MODEL_CONTEXT frames on both sides and keeps only its center, so every
+        frame is computed with at least 4 s of context, as ADTOF's own `predict` does.
+        """
+        n = len(spectrogram)
+        y = np.empty((n, len(MODEL_ORDER)), np.float32)
+        for s in range(0, n, MODEL_CHUNK):
+            lo, hi = max(0, s - MODEL_CONTEXT), min(n, s + MODEL_CHUNK + MODEL_CONTEXT)
+            out = self.session.run(None, {"x": spectrogram[None, lo:hi]})[0][0]
+            y[s : s + MODEL_CHUNK] = out[s - lo : s - lo + MODEL_CHUNK]
         return {c: y[:, i] for i, c in enumerate(MODEL_ORDER)}
 
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
