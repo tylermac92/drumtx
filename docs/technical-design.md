@@ -46,14 +46,14 @@ These are planning assumptions, not user requirements. Each one is chosen to be 
 | Format | MVP support | Mechanism |
 |---|---|---|
 | WAV, FLAC, AIFF | Yes | `soundfile` (bundles libsndfile) |
-| MP3, OGG/Vorbis | Yes; to be confirmed in M1 | Recent `soundfile` releases bundle a libsndfile build with MP3 support. |
-| M4A/AAC, others | Only if FFmpeg is on `PATH` | Decoded through an FFmpeg subprocess. A clear error is shown if FFmpeg is missing. |
+| MP3, OGG/Vorbis | Yes (confirmed in M1-1 on all three operating systems) | `soundfile` 0.14 bundles libsndfile 1.2 with MP3 support. |
+| M4A/AAC, others | Only if FFmpeg is on `PATH` | Read with `ffprobe` and decoded through an `ffmpeg` subprocess. If they are missing, exit code 3 with an install hint. |
 
 **Normalization.** Audio is downmixed to mono (stereo is kept for the optional separation stage) and resampled to 44.1 kHz with float32 samples. Peak level is normalized for detection only; source files are never modified.
 
 **Limits.**
 
-- Default maximum duration is 10 minutes, adjustable with `--max-duration`.
+- Default maximum duration is 10 minutes, adjustable with `--max-duration`. The duration limits apply to the selected audio, so `--start`/`--end` can take an excerpt from a longer file. They are checked from the file header, before decoding.
 - `--start` and `--end` select an excerpt. Event times, report timestamps, and preview alignment still use seconds from the start of the source file; the excerpt bounds are stored in `events.json`.
 - Very short inputs (under 2 seconds) are rejected because beat tracking cannot work on them.
 - Files larger than 2 GB are rejected before decoding (exit code 2).
