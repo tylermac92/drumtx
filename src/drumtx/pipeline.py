@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 from drumtx import ingest
+from drumtx.detect import BaselineDetector, Preset
+from drumtx.schema import CLASSES, DrumEvent, event_from_json, event_to_json
 
 log = logging.getLogger("drumtx")
 CACHE_DIR = ".drumtx-cache"
@@ -35,6 +37,7 @@ class Config:
     start: float | None = None
     end: float | None = None
     max_duration: float = ingest.DEFAULT_MAX_DURATION_S
+    sensitivity: Preset = "balanced"
     no_cache: bool = False
 
 
@@ -73,6 +76,11 @@ def _ingest_summary(ctx: RunContext, audio: ingest.AudioBuffer) -> str:
     return f"{ctx.config.input.name}  {minutes}:{seconds:02d}, {channels}"
 
 
+def _detect_summary(ctx: RunContext, events: list[DrumEvent]) -> str:
+    per_class = ", ".join(f"{c} {sum(e.cls == c for e in events):,}" for c in CLASSES)
+    return f"{len(events):,} events ({per_class})"
+
+
 STAGES = [
     Stage(
         "ingest",
@@ -82,6 +90,15 @@ STAGES = [
         summary=_ingest_summary,
         params=("start", "end", "max_duration"),
         cached=False,
+    ),
+    Stage(
+        "detect",
+        run=lambda ctx, audio: BaselineDetector().detect(audio, ctx.config.sensitivity),
+        summary=_detect_summary,
+        deps=("ingest",),
+        params=("sensitivity",),
+        dump=lambda events: json.dumps([event_to_json(e) for e in events]).encode(),
+        load=lambda data: [event_from_json(d) for d in json.loads(data)],
     ),
 ]
 
