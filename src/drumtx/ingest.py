@@ -62,12 +62,7 @@ def load_audio(
             snd.seek(round(first * rate))
             audio = snd.read(round(last * rate) - round(first * rate), "float32", always_2d=True)
     except sf.LibsndfileError as e:
-        if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
-            if path.suffix.lower() in NATIVE_SUFFIXES:
-                raise InputError(f"Cannot decode {path.name}: {e.error_string}") from e
-            raise MissingDependencyError(
-                f"Decoding {path.suffix or 'this file'} needs FFmpeg. {FFMPEG_HINT}"
-            ) from e
+        _require_ffmpeg(path, e)
         rate, duration, channels = _probe(path)
         first, last = _excerpt(path, duration, start, end, max_duration)
         audio = _ffmpeg_decode(path, channels, first, last)
@@ -77,6 +72,29 @@ def load_audio(
     if rate != SAMPLE_RATE:
         audio = soxr.resample(audio, rate, SAMPLE_RATE).astype(np.float32, copy=False)
     return AudioBuffer(np.ascontiguousarray(audio), first, duration)
+
+
+def source_duration(path: Path) -> float:
+    """Length of the whole file in seconds, from its header only."""
+    check_file(path)
+    try:
+        with path.open("rb") as f, sf.SoundFile(f) as snd:
+            return float(snd.frames / snd.samplerate)
+    except sf.LibsndfileError as e:
+        _require_ffmpeg(path, e)
+        return _probe(path)[1]
+    except OSError as e:
+        raise InputError(f"Cannot read {path}: {e.strerror}") from e
+
+
+def _require_ffmpeg(path: Path, e: sf.LibsndfileError) -> None:
+    """soundfile failed: raise unless FFmpeg is there to try instead."""
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        if path.suffix.lower() in NATIVE_SUFFIXES:
+            raise InputError(f"Cannot decode {path.name}: {e.error_string}") from e
+        raise MissingDependencyError(
+            f"Decoding {path.suffix or 'this file'} needs FFmpeg. {FFMPEG_HINT}"
+        ) from e
 
 
 def check_file(path: Path) -> None:

@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from drumtx import pipeline
+from drumtx import pipeline, render
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -92,6 +92,13 @@ def transcribe(
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Ignore cached stage outputs and recompute.")
     ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Overwrite existing outputs, except an events.csv edited since it was written.",
+        ),
+    ] = False,
     verbose: Annotated[bool, typer.Option("-v", "--verbose", help="More detail.")] = False,
     quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Errors only.")] = False,
 ) -> None:
@@ -104,8 +111,14 @@ def transcribe(
         max_duration=max_duration,
         sensitivity=sensitivity,
         no_cache=no_cache,
+        force=force,
     )
-    _run(verbose, lambda: pipeline.run(pipeline.RunContext.create(config)))
+
+    def work() -> None:
+        render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
+        pipeline.run(pipeline.RunContext.create(config))
+
+    _run(verbose, work)
 
 
 @app.command(help="Accuracy of predictions against a reference (MIDI or CSV).")
