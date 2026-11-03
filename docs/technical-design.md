@@ -377,7 +377,7 @@ Each question has a working default used until it is resolved.
 | Q1 | Distribution and license model: open source (which license), free to use, any commercial intent? | Decides which models and datasets are allowed. | **Resolved** (decision 0001): personal tool, no commercial use, not distributed. Non-commercial components are allowed. |
 | Q2 | Adopt a pretrained ADT model or train our own? | Largest effect on effort and accuracy. | **Resolved** (decision 0005): adopt the ADTOF pretrained model; training our own stays a fallback. |
 | Q3 | Should `--separate` be on by default? | Quality vs. runtime and install size. | Off; revisit after the M7-1 trial. |
-| Q4 | Which notation apps must be officially supported? | Defines the compatibility test matrix. | MuseScore required; others best-effort. |
+| Q4 | Which notation apps must be officially supported? | Defines the compatibility test matrix. | **Resolved** (decision 0007): MuseScore only. |
 | Q5 | Primary input type expected from users: isolated drums or full mixes? | Tuning priorities and defaults. | **Resolved** (decision 0004): default accepted. Optimize for both; report separately. |
 | Q6 | Is GPU support a requirement? | Test matrix and packaging complexity. | Separation only (`--device cuda`); detection is CPU-only. Untested beyond a smoke test. |
 | Q7 | Where are model files hosted? | Release process and availability. | **Resolved** (decision 0001): no hosting. Models are downloaded from their upstream sources, or trained locally, into the per-user model directory. |

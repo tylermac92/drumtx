@@ -1,2 +1,4 @@
 # Frozen manifests are hashed byte for byte; keep LF line endings on every OS.
 eval/*.csv -text
+# Golden files are compared byte for byte; keep LF line endings on every OS.
+tests/golden/* -text
