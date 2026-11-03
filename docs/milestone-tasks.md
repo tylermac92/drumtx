@@ -164,7 +164,7 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 **M2-1 — Obtain the model (per Q2)**
 - *Description:* Integrate the ADTOF pretrained model chosen in M0-4 (decision 0005): the feature extractor, and a documented command that converts the upstream checkpoint to ONNX. Training our own model (decision 0005 estimates the effort) is the fallback if the model falls short on your recordings.
 - *Acceptance criteria:*
-  - The model beats the M1 baseline in per-class F-measure on the development set for kick, snare, and hi-hat.
+  - The model beats the M1 baseline (`eval/results/baseline-dev.json`) in per-class F-measure on the development set for every class (decision 0010).
   - Training, or conversion of the pretrained model, is reproducible from a documented command.
   - A model card exists.
 - *Dependencies:* M0-4, M1-6.
