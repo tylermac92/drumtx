@@ -61,10 +61,9 @@ def compare(npz: str, model: str) -> None:
         a, b = (
             detect.to_events(
                 detector.activations(x),
-                detect.MODEL_THRESHOLDS,
-                "balanced",
+                detector.presets["thresholds"]["balanced"],
                 0.0,
-                detect.MODEL_MIN_GAP_S,
+                detector.presets["min_gap_s"],
             )
             for x in (ours, theirs)
         )

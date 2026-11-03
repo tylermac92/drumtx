@@ -1,9 +1,12 @@
-"""M1-6: the benchmark's regression comparison."""
+"""M1-6 and M2-3: the benchmark's regression comparison and preset tuning."""
 
 from typing import Any
 
+import numpy as np
 import pytest
-from benchmark import compare, markdown
+from benchmark import GAPS, GRID, Counts, choose_presets, compare, f_beta, markdown
+
+from drumtx.schema import CLASSES
 
 
 def result(f: float, commit: str = "abc") -> dict[str, Any]:
@@ -39,3 +42,30 @@ def test_markdown() -> None:
         }}},
     }  # fmt: skip
     assert "| balanced | all @ 50 ms | 0.50 | 0.50 | 0.50 | 0.50 | 0.50 |" in markdown(r)
+
+
+def test_f_beta() -> None:
+    assert f_beta(np.array([5, 5, 5]), 1.0) == pytest.approx(0.5)
+    assert f_beta(np.array([8, 2, 8]), 0.5) > f_beta(np.array([8, 2, 8]), 2.0)  # precise
+    assert f_beta(np.array([0, 3, 4]), 1.0) == 0.0
+
+
+def test_choose_presets_orders_thresholds() -> None:
+    """Higher thresholds trade recall for precision; strict picks higher ones than sensitive."""
+
+    def counts(t: float) -> np.ndarray:
+        tp = round(100 * (1 - t))
+        return np.array([tp, max(0, round(300 * (0.6 - t))), 100 - tp])
+
+    table: Counts = {
+        (g, c, t, s): counts(t) for g in GAPS for c in CLASSES for t in GRID
+        for s in ("drum-only", "full-mix")
+    }  # fmt: skip
+    for t in GRID:  # full-mix toms favor the top threshold, but toms tune on drum-only alone
+        table[(0.02, "tom", t, "full-mix")] = np.array([int(t == GRID[-1]), 0, 1])
+    presets = choose_presets(table)
+    assert presets["min_gap_s"] == 0.02  # all gaps tie
+    th = presets["thresholds"]
+    for c in CLASSES:
+        assert th["strict"][c] > th["balanced"][c] > th["sensitive"][c]
+    assert th["balanced"]["tom"] == th["balanced"]["kick"]
