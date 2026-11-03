@@ -2,14 +2,17 @@
 
 `BaselineDetector` is the classical detector: positive spectral flux of the log-magnitude
 spectrogram, averaged over one frequency band per class. It needs no model and is the regression
-floor for the learned detector (M2).
+floor for the learned detector. `ModelDetector` runs the ADTOF model (decision 0005,
+docs/models/adtof-frame-rnn.md).
 """
 
+from pathlib import Path
 from typing import Literal, Protocol
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
+from drumtx import features
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 from drumtx.schema import CLASSES, DrumClass, DrumEvent
 
@@ -39,6 +42,18 @@ THRESHOLDS: dict[DrumClass, float] = {
 }
 PRESET_SCALE: dict[Preset, float] = {"strict": 1.5, "balanced": 1.0, "sensitive": 0.67}
 
+# ADTOF's output order (its LABELS_5: GM notes 35, 38, 47, 42, 49), and its own peak picking:
+# per-class thresholds from its hyperparameters, and peaks within 20 ms combined.
+MODEL_ORDER: tuple[DrumClass, ...] = ("kick", "snare", "tom", "hihat", "cymbal")
+MODEL_THRESHOLDS: dict[DrumClass, float] = {
+    "kick": 0.22,
+    "snare": 0.24,
+    "tom": 0.32,
+    "hihat": 0.22,
+    "cymbal": 0.30,
+}
+MODEL_MIN_GAP_S = 0.02
+
 
 class Detector(Protocol):
     def detect(self, audio: AudioBuffer, preset: Preset) -> list[DrumEvent]: ...
@@ -63,11 +78,11 @@ def baseline_activations(y: np.ndarray) -> dict[DrumClass, np.ndarray]:
     return {c: np.maximum(np.diff(b, prepend=b[:1]), 0) for c, b in bands.items()}
 
 
-def pick_peaks(act: np.ndarray, threshold: float) -> np.ndarray:
+def pick_peaks(act: np.ndarray, threshold: float, min_gap_s: float = MIN_GAP_S) -> np.ndarray:
     """Frame indices of peaks, as madmom's NotePeakPickingProcessor does it at 100 fps.
 
     A peak is a local maximum (2 frames before, 1 after) that exceeds the moving average over the
-    preceding 100 ms by `threshold`. Peaks closer than MIN_GAP_S keep the first.
+    preceding 100 ms by `threshold`. Peaks closer than `min_gap_s` keep the first.
     """
 
     def window(a: np.ndarray, before: int, after: int) -> np.ndarray:
@@ -77,25 +92,53 @@ def pick_peaks(act: np.ndarray, threshold: float) -> np.ndarray:
     frames = np.nonzero((det > 0) & (det == window(det, 2, 1).max(axis=1)))[0]
     out: list[int] = []
     for f in frames:
-        if not out or f - out[-1] > MIN_GAP_S * FPS:
+        if not out or f - out[-1] > min_gap_s * FPS:
             out.append(int(f))
     return np.array(out, dtype=int)
 
 
+def to_events(
+    acts: dict[DrumClass, np.ndarray],
+    thresholds: dict[DrumClass, float],
+    preset: Preset,
+    start_s: float,
+    min_gap_s: float = MIN_GAP_S,
+) -> list[DrumEvent]:
+    events = []
+    for c, act in acts.items():
+        threshold = thresholds[c] * PRESET_SCALE[preset]
+        for f in pick_peaks(act, threshold, min_gap_s).tolist():
+            # Not calibrated (that is M2-4): 0.5 at the threshold, rising toward 1.
+            confidence = float(act[f] / (act[f] + threshold))
+            events.append(
+                DrumEvent(
+                    time_s=round(start_s + f / FPS, 3),
+                    cls=c,
+                    confidence=round(confidence, 3),
+                    velocity=max(1, min(127, round(127 * confidence))),
+                )
+            )
+    return sorted(events, key=lambda e: (e.time_s, CLASSES.index(e.cls)))
+
+
 class BaselineDetector:
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
-        events = []
-        for c, act in baseline_activations(audio.mono).items():
-            threshold = THRESHOLDS[c] * PRESET_SCALE[preset]
-            for f in pick_peaks(act, threshold).tolist():
-                # Not calibrated (that is M2-4): 0.5 at the threshold, rising toward 1.
-                confidence = float(act[f] / (act[f] + threshold))
-                events.append(
-                    DrumEvent(
-                        time_s=round(audio.start_s + f / FPS, 3),
-                        cls=c,
-                        confidence=round(confidence, 3),
-                        velocity=max(1, min(127, round(127 * confidence))),
-                    )
-                )
-        return sorted(events, key=lambda e: (e.time_s, CLASSES.index(e.cls)))
+        return to_events(baseline_activations(audio.mono), THRESHOLDS, preset, audio.start_s)
+
+
+class ModelDetector:
+    """The ADTOF Frame_RNN model as ONNX, made by scripts/convert_adtof.py."""
+
+    def __init__(self, path: Path) -> None:
+        import onnxruntime as ort
+
+        self.session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+
+    def activations(self, spectrogram: np.ndarray) -> dict[DrumClass, np.ndarray]:
+        # shortcut: the whole file in one run; M2-2 adds chunked inference to bound memory.
+        y = self.session.run(None, {"x": spectrogram[None]})[0][0]
+        return {c: y[:, i] for i, c in enumerate(MODEL_ORDER)}
+
+    def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
+        acts = self.activations(features.spectrogram(audio.mono))
+        return to_events(acts, MODEL_THRESHOLDS, preset, audio.start_s, MODEL_MIN_GAP_S)
