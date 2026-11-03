@@ -5,7 +5,7 @@
 - **Milestones** M0–M7 are sequenced. Some milestones can overlap where the dependencies allow it:
   - M3 can start once M1-7 exists, using the baseline detector.
   - M4 can start once the M3-2 quantizer interface is stable.
-- **No dates are given**, because no timeline was specified. Tasks are sized during M0 (M0-8).
+- **No dates are given**, because no timeline was specified. Each task's estimate, in focused days, is in decision 0008 (M0-8).
 - **One developer.** DrumTx is a personal tool (decision 0001), so tasks are done and reviewed by the author.
 - **Task IDs** (for example M2-3) are referenced in dependency notes. Open questions Q1–Q8 refer to the Technical Design Document.
 

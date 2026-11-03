@@ -329,7 +329,7 @@ The tool never claims a transcription is correct. Every report ends with a short
 
 | Item | Target | Approach |
 |---|---|---|
-| Runtime without separation | ≤ 1× real time on a reference laptop CPU (specified in M0) | ONNX Runtime CPU inference; vectorized features; chunked inference with overlap. |
+| Runtime without separation | ≤ 1× real time on the reference laptop CPU (decision 0008: Intel Core i7-14700HX, 32 GB, Windows 11) | ONNX Runtime CPU inference; vectorized features; chunked inference with overlap. |
 | Runtime with separation | Measured and documented; expected to be several times slower on CPU | Optional `--device cuda`; caching so separation runs once per file. |
 | Peak memory | < 2 GB for a 10-minute file without separation | Chunked processing; float32 throughout. |
 | Re-runs | Quantize and render in seconds | Cache keyed by audio hash, stage, and parameters; `render` skips detection entirely. |
@@ -361,7 +361,7 @@ The tool never claims a transcription is correct. Every report ends with a short
 |---|---|---|
 | Accuracy on full mixes is much lower than on drum-only audio | Users get noisy drafts | Optional separation; honest per-subset reporting; review tooling; `--sensitivity` presets. |
 | Hi-hat vs. cymbal confusion; merged tom and cymbal classes | Wrong noteheads and classes | Five-class vocabulary for the MVP; classes flagged as lower-confidence; finer classes deferred. |
-| Beat or downbeat errors (half/double tempo, bar offset) | Entire score shifted or garbled | User overrides; tempo-stability flags; fast re-runs from cache; report shows the estimated values prominently. |
+| Beat or downbeat errors (half/double tempo, bar offset); in M0-5, Beat This! went half tempo on 2 jazz full mixes | Entire score shifted or garbled | User overrides; tempo-stability flags; fast re-runs from cache; report shows the estimated values prominently. |
 | Rubato, tempo changes, swing | Off-grid events, wrong triplet choices | Per-beat grid selection; residual flags; one tempo marking in notation but a full tempo map in MIDI; swing handling is post-MVP. |
 | Licensing of pretrained models and datasets | Some terms go beyond non-commercial (research-only, no redistribution); sharing the project later would need replacements | Per-item review in M0-2; nothing third-party committed to the repository; revisit decision 0001 before any sharing. |
 | Choosing separation vs. no separation by default | Quality vs. speed and install size | Off by default in MVP; documented recommendation for full mixes; revisit after the M7-1 trial (Q3). |
@@ -369,6 +369,13 @@ The tool never claims a transcription is correct. Every report ends with a short
 | Training data does not match user recordings | Benchmarks overstate quality | Mix of datasets plus self-annotated real-world clips; add failure cases from your own recordings (M7-1). |
 | Beat tracker choice pulls PyTorch or unmaintained code into the base install | Larger install or install failures | Resolved in M0-5 (decision 0006): Beat This! runs through ONNX Runtime; the PyTorch package is only a fallback extra. |
 | Optional dependencies break across operating systems | Installation failures | Lightweight base install; `doctor` command; CI install matrix. |
+| Detection depends on upstream ADTOF checkpoint files and a one-time TensorFlow conversion (M0-4) | The model cannot be rebuilt if the files move or TensorFlow drops the checkpoint format | SHA-256 values recorded (decision 0005); keep the converted ONNX file and a private backup of the checkpoint outside the repository; training our own model is the fallback (5–10 days, decision 0008). |
+| Hi-hat detection is weak on some drum-only kits (F 0.48 on one E-GMD groove in M0-4) | Noisy hi-hat lines | Track it per kit in M1-6; per-class thresholds in M2-3; our own model did better on drum-only hi-hat (decision 0005). |
+| Full-mix evaluation data is thin: about 11 minutes per split, with toms below the stability minimum (M0-3) | Full-mix and tom numbers are unreliable | Report them as unreliable; add annotated recordings of your own (optional, about 5–25 days, decision 0008), partly through M7-2. |
+| Feature code is reimplemented in NumPy (madmom-style spectrogram for ADTOF, log-mel for Beat This!) | Silent accuracy loss if the features drift from what the models were trained on | One-time comparisons against the originals in M2-1 and M3-1 (beats within one frame); PyTorch fallback extra for the beat tracker (decision 0006). |
+| Upstream Beat This! checkpoints are pickles (M0-5) | Converting them runs code from the file | Convert once, in a throwaway environment, only files whose SHA-256 matches the registry; the runtime loads only ONNX (M2-5). |
+| MusicXML import was checked only in MuseScore 3.2.3 (M0-6) | MuseScore 4 may import differently | Open the golden file in MuseScore 4 once; M4-5 checks every development-set output. |
+| The reference machine is a fast 20-core laptop (decision 0008) | Meeting the 1× target there says little about ordinary laptops | Spike timings run about 20× faster than real time on 4 cores; M6-1 adds a 4-thread run if usage exceeds 0.25× real time. |
 
 ## 14. Open questions
 
