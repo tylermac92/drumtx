@@ -1,5 +1,6 @@
 """DrumTx command-line interface."""
 
+import json
 import logging
 from collections.abc import Callable
 from importlib.metadata import version
@@ -10,7 +11,7 @@ import typer
 
 from drumtx import pipeline
 from drumtx.detect import Preset
-from drumtx.errors import DrumtxError
+from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
 
 log = logging.getLogger("drumtx")
@@ -107,11 +108,50 @@ def transcribe(
     _run(verbose, lambda: pipeline.run(pipeline.RunContext.create(config)))
 
 
+@app.command(help="Accuracy of predictions against a reference (MIDI or CSV).")
+def evaluate(
+    pred: Annotated[Path, typer.Option(help="Predicted events: events.json or events.csv.")],
+    ref: Annotated[
+        Path, typer.Option(help="Reference: MIDI (channel 10, General MIDI drums) or CSV.")
+    ],
+    ref_beats: Annotated[
+        Path | None, typer.Option(help="Reference beats CSV (time_s,beat), for beat metrics.")
+    ] = None,
+    tolerance_ms: Annotated[
+        list[float] | None,
+        typer.Option(help="Onset tolerance in ms; repeat for several.", show_default="50, 30"),
+    ] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="Also write the results to OUT.json and OUT.md.")
+    ] = None,
+) -> None:
+    from drumtx import evaluate as ev  # mir_eval and SciPy load only for this command
+
+    _setup_logging(verbose=False, quiet=False)
+
+    def work() -> None:
+        tolerances = tuple(tolerance_ms or ev.DEFAULT_TOLERANCES_MS)
+        if any(t <= 0 for t in tolerances):
+            raise InputError(f"--tolerance-ms must be positive, got {tolerances}")
+        result = ev.evaluate(
+            ev.load_prediction(pred), ev.load_reference(ref, ref_beats), tolerances
+        )
+        report = ev.markdown(result, pred, ref)
+        if out is not None:
+            try:
+                out.with_name(out.name + ".json").write_text(json.dumps(result, indent=2) + "\n")
+                out.with_name(out.name + ".md").write_text(report, encoding="utf-8")
+            except OSError as e:
+                raise InputError(f"Cannot write {out}.json / .md: {e.strerror}") from e
+        typer.echo(report, nl=False)
+
+    _run(False, work)
+
+
 # The other commands from the Technical Design Document §4 are stubs until their milestones land.
 _COMMANDS = {
     "render": "Re-quantize and re-render from an (edited) events JSON or CSV.",
     "preview": "Mix the original audio with synthesized detected hits.",
-    "evaluate": "Accuracy of predictions against a reference (MIDI or CSV).",
     "models": "Manage model files (for offline use).",
     "doctor": "Check the environment: Python, decoders, FFmpeg, extras, models.",
 }
