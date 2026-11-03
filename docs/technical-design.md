@@ -86,13 +86,14 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 | `--first-downbeat SEC` | estimated | Fixes the start of bar 1 when the estimate is wrong. |
 | `--grid` | `auto` | `16th`, `triplet`, or `auto` (chosen per beat). |
 | `--start SEC`, `--end SEC` | whole file | Transcribe an excerpt. |
+| `--max-duration SEC` | 600 | Longest audio accepted (the selected excerpt, if any). |
 | `--mark-uncertain` | off | Color low-confidence notes in the MusicXML. |
 | `--midi-timing` | `quantized` | `quantized` (on grid, aligned to audio through the tempo map) or `performance` (raw times). |
 | `--device` | `cpu` | `cpu` or `cuda`, for `--separate` only. Detection always runs on CPU in the MVP. |
 | `--model ID` | registry default | Detection model. `baseline` selects the classical detector, which needs no download. |
 | `--offline` | off | Never attempt a network access. Fails if the model is not installed. |
 | `--force` | off | Overwrite existing outputs. Never overwrites an `events.csv` that was edited after it was written (detected by the hash stored in `events.json`); move or rename the edited file first. |
-| `--no-cache` | off | Ignore cached stage outputs and recompute all stages. |
+| `--no-cache` | off | Ignore cached stage outputs and recompute all stages. The cache is in `<out-dir>/.drumtx-cache/` and keeps only the newest entry per stage. |
 | `-v` / `-q` | — | More or less logging. |
 
 ### Key `render` options

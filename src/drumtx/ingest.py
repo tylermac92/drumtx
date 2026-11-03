@@ -53,12 +53,7 @@ def load_audio(
 
     The duration limits apply to the selected audio, so an excerpt of a long file is allowed.
     """
-    try:
-        size = path.stat().st_size
-    except OSError as e:
-        raise InputError(f"Cannot read {path}: {e.strerror}") from e
-    if size > MAX_FILE_BYTES:
-        raise InputError(f"{path.name} is {size / 1024**3:.1f} GB; the limit is 2 GB.")
+    check_file(path)
 
     try:
         with path.open("rb") as f, sf.SoundFile(f) as snd:
@@ -82,6 +77,16 @@ def load_audio(
     if rate != SAMPLE_RATE:
         audio = soxr.resample(audio, rate, SAMPLE_RATE).astype(np.float32, copy=False)
     return AudioBuffer(np.ascontiguousarray(audio), first, duration)
+
+
+def check_file(path: Path) -> None:
+    """Reject a missing or oversized file before anything reads it."""
+    try:
+        size = path.stat().st_size
+    except OSError as e:
+        raise InputError(f"Cannot read {path}: {e.strerror}") from e
+    if size > MAX_FILE_BYTES:
+        raise InputError(f"{path.name} is {size / 1024**3:.1f} GB; the limit is 2 GB.")
 
 
 def _excerpt(

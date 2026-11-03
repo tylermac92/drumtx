@@ -1,10 +1,18 @@
 """DrumTx command-line interface."""
 
+import logging
 from collections.abc import Callable
 from importlib.metadata import version
+from pathlib import Path
 from typing import Annotated
 
 import typer
+
+from drumtx import pipeline
+from drumtx.errors import DrumtxError
+from drumtx.ingest import DEFAULT_MAX_DURATION_S
+
+log = logging.getLogger("drumtx")
 
 app = typer.Typer(help="Drum transcription from audio to editable notation.", no_args_is_help=True)
 
@@ -27,9 +35,72 @@ def main(
     """Drum transcription from audio to editable notation."""
 
 
-# Commands from the Technical Design Document §4. Each is a stub until its milestone lands.
+def _setup_logging(verbose: bool, quiet: bool) -> None:
+    handler = logging.StreamHandler()  # stderr, so stdout stays free for data
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    log.handlers[:] = [handler]
+    log.propagate = False
+    log.setLevel(logging.DEBUG if verbose else logging.WARNING if quiet else logging.INFO)
+
+
+def _run(verbose: bool, work: Callable[[], object]) -> None:
+    """Run `work`, turning errors into a message and the exit code from §4."""
+    try:
+        work()
+    except DrumtxError as e:
+        log.error("Error: %s", e)
+        raise typer.Exit(e.exit_code) from None
+    except Exception as e:
+        if verbose:
+            log.exception("Unexpected error")
+        else:
+            log.error(
+                "Unexpected error: %s: %s\nRun again with -v for details, and report it at "
+                "https://github.com/tylermac92/drumtx/issues.",
+                type(e).__name__,
+                e,
+            )
+        raise typer.Exit(1) from None
+
+
+@app.command(help="Full pipeline: audio to score, MIDI, events, and report.")
+def transcribe(
+    audio: Annotated[Path, typer.Argument(metavar="INPUT", help="Audio file to transcribe.")],
+    out_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "-o", "--out-dir", help="Output folder.", show_default="./<input name>_drumtx/"
+        ),
+    ] = None,
+    start: Annotated[
+        float | None, typer.Option(help="Excerpt start, in seconds from the start of the file.")
+    ] = None,
+    end: Annotated[
+        float | None, typer.Option(help="Excerpt end, in seconds from the start of the file.")
+    ] = None,
+    max_duration: Annotated[
+        float, typer.Option(help="Longest audio accepted, in seconds.")
+    ] = DEFAULT_MAX_DURATION_S,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Ignore cached stage outputs and recompute.")
+    ] = False,
+    verbose: Annotated[bool, typer.Option("-v", "--verbose", help="More detail.")] = False,
+    quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Errors only.")] = False,
+) -> None:
+    _setup_logging(verbose, quiet)
+    config = pipeline.Config(
+        input=audio,
+        out_dir=out_dir or Path(f"{audio.stem}_drumtx"),
+        start=start,
+        end=end,
+        max_duration=max_duration,
+        no_cache=no_cache,
+    )
+    _run(verbose, lambda: pipeline.run(pipeline.RunContext.create(config)))
+
+
+# The other commands from the Technical Design Document §4 are stubs until their milestones land.
 _COMMANDS = {
-    "transcribe": "Full pipeline: audio to score, MIDI, events, and report.",
     "render": "Re-quantize and re-render from an (edited) events JSON or CSV.",
     "preview": "Mix the original audio with synthesized detected hits.",
     "evaluate": "Accuracy of predictions against a reference (MIDI or CSV).",
