@@ -9,6 +9,7 @@ from typing import Annotated
 import typer
 
 from drumtx import pipeline
+from drumtx.detect import Preset
 from drumtx.errors import DrumtxError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
 
@@ -81,6 +82,12 @@ def transcribe(
     max_duration: Annotated[
         float, typer.Option(help="Longest audio accepted, in seconds.")
     ] = DEFAULT_MAX_DURATION_S,
+    sensitivity: Annotated[
+        Preset,
+        typer.Option(
+            help="strict misses more hits but adds fewer false ones; sensitive the opposite."
+        ),
+    ] = "balanced",
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Ignore cached stage outputs and recompute.")
     ] = False,
@@ -94,6 +101,7 @@ def transcribe(
         start=start,
         end=end,
         max_duration=max_duration,
+        sensitivity=sensitivity,
         no_cache=no_cache,
     )
     _run(verbose, lambda: pipeline.run(pipeline.RunContext.create(config)))

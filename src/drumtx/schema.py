@@ -5,8 +5,8 @@ On disk these are `events.json` schema v1 (`events-v1.schema.json` next to this 
 `DrumEvent.cls`, which is `class` in JSON and CSV.
 """
 
-from dataclasses import dataclass
-from typing import Literal, get_args
+from dataclasses import asdict, dataclass
+from typing import Any, Literal, get_args
 
 SCHEMA_VERSION = 1
 
@@ -78,3 +78,27 @@ class QuantizedScore:
     tempo_map: TempoMap
     events: tuple[DrumEvent, ...]  # sorted by time; every event has a position
     measure_flags: tuple[MeasureFlags, ...] = ()  # flagged measures only
+
+
+def event_to_json(e: DrumEvent) -> dict[str, Any]:
+    """One entry of `events` in events.json."""
+    return {
+        "time_s": e.time_s,
+        "class": e.cls,
+        "confidence": e.confidence,
+        "velocity": e.velocity,
+        "quantized": None if e.quantized is None else asdict(e.quantized),
+        "flags": list(e.flags),
+    }
+
+
+def event_from_json(d: dict[str, Any]) -> DrumEvent:
+    q = d["quantized"]
+    return DrumEvent(
+        time_s=d["time_s"],
+        cls=d["class"],
+        confidence=d["confidence"],
+        velocity=d["velocity"],
+        quantized=None if q is None else Position(**q),
+        flags=tuple(d["flags"]),
+    )
