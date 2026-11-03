@@ -22,7 +22,7 @@ def test_version() -> None:
     assert result.output.strip() == f"drumtx {version('drumtx')}"
 
 
-@pytest.mark.parametrize("command", COMMANDS)
+@pytest.mark.parametrize("command", COMMANDS[1:])  # transcribe is implemented
 def test_stub_commands_fail_clearly(command: str) -> None:
     result = runner.invoke(app, [command])
     assert result.exit_code == 1
