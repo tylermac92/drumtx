@@ -102,6 +102,15 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 `render` never modifies `events.csv`. It overwrites the score, MIDI, and report, and rewrites `events.json` from the event list it rendered, so the tempo map, quantized positions, and flags there match the new score. The rewrite keeps the source metadata and the CSV hash recorded by `transcribe`, so edit protection still works. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
 
+### Key `evaluate` options
+
+`evaluate` takes `--pred` (an `events.json` or `events.csv`) and `--ref`: a MIDI file (channel 10, General MIDI drum notes) or a CSV in the `events.csv` format. Options:
+- `--ref-beats` adds beat and downbeat F-measure. It takes a `time_s,beat` CSV, where `beat` 1 marks a downbeat.
+- `--tolerance-ms` can be repeated; the default is 50 and 30.
+- `--out PREFIX` also writes `PREFIX.json` and `PREFIX.md`.
+
+The Markdown report goes to stdout. MIDI notes that map to no class, and notes on other channels, are listed as not scored.
+
 ### Example commands
 
 ```bash
