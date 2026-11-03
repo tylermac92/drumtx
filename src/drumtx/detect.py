@@ -18,7 +18,7 @@ FPS = 100  # activation frames per second
 MIN_GAP_S = 0.03  # peaks of one class closer than this are one hit
 # A 1024-sample window keeps sharp onsets within -7 to +4 ms; a 2048-sample one is 4–17 ms early.
 FRAME = 1024
-MAX_GAIN = 10.0  # peak normalization stops at +20 dB, so near-silence is not blown up into hits
+MAX_GAIN = 4.0  # peak normalization stops at +12 dB, so near-silence is not blown up into hits
 
 # Frequency band per class, in Hz. Real kits overlap these, which is why this is only a baseline.
 BANDS_HZ: dict[DrumClass, tuple[float, float]] = {
@@ -31,10 +31,10 @@ BANDS_HZ: dict[DrumClass, tuple[float, float]] = {
 # Per-class peak thresholds for `balanced`, tuned for F-measure on the development set
 # (decision 0009). `strict` and `sensitive` scale them.
 THRESHOLDS: dict[DrumClass, float] = {
-    "kick": 0.20,
-    "snare": 0.06,
-    "hihat": 0.02,
-    "tom": 0.10,
+    "kick": 0.35,
+    "snare": 0.03,
+    "hihat": 0.014,
+    "tom": 0.2,
     "cymbal": 0.03,
 }
 PRESET_SCALE: dict[Preset, float] = {"strict": 1.5, "balanced": 1.0, "sensitive": 0.67}
