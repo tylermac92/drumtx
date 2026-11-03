@@ -15,13 +15,13 @@ The rest follows the spike:
 - **Activations:** the positive spectral flux of log10(1 + |STFT|) at 100 frames per second, averaged over one band per class: kick 30–90 Hz, tom 100–300 Hz, snare 1–4 kHz, cymbal 4–8 kHz, hi-hat 8–16 kHz.
 - **Peak picking:** madmom-style, with a 100 ms moving average and a local maximum over 2 frames before and 1 after. Peaks closer than 30 ms count as one hit.
 
-**Thresholds and confidence.** Each class has its own threshold for `balanced` (kick 0.35, snare 0.03, hi-hat 0.014, tom 0.2, cymbal 0.03). These were chosen for the best F-measure on the whole development set (`scripts/eval_baseline.py --tune`, on a geometric grid). They were tuned with the earlier +20 dB cap; the results below use the final +12 dB cap. `strict` multiplies the thresholds by 1.5 and `sensitive` by 0.67.
+**Thresholds and confidence.** Each class has its own threshold for `balanced` (kick 0.35, snare 0.03, hi-hat 0.014, tom 0.2, cymbal 0.03). These were chosen for the best F-measure on the whole development set (`scripts/benchmark.py --tune`, on a geometric grid; `scripts/eval_baseline.py` until M1-6). They were tuned with the earlier +20 dB cap; the results below use the final +12 dB cap. `strict` multiplies the thresholds by 1.5 and `sensitive` by 0.67.
 
 Confidence is `activation / (activation + threshold)`, which is 0.5 at the threshold, and velocity is `127 × confidence`. Neither is calibrated; calibration is M2-4.
 
 ## Regression floor (development set, `balanced`)
 
-All 189 development clips (107 minutes), scored with `mir_eval` onset matching. The machine-readable results, with every preset and with counts, are in `eval/results/baseline-dev.json`. M1-6's benchmark compares against that file.
+All 189 development clips (107 minutes), scored with `mir_eval` onset matching. The machine-readable results, with every preset and with counts, are in `eval/results/baseline-dev.json`. The benchmark (M1-6, `scripts/benchmark.py`) compares against that file.
 
 F-measure:
 
@@ -55,5 +55,5 @@ These are expected for a band-energy detector. The learned detector (M2, decisio
 This reads the corpus from `~/drumtx-data` (decision 0004) and takes about 4 minutes.
 
 ```bash
-uv run python scripts/eval_baseline.py --tune
+uv run python scripts/benchmark.py --tune
 ```

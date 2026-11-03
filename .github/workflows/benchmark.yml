@@ -1,0 +1,48 @@
+name: Benchmark
+
+# Detector accuracy on the development set (M1-6, decision 0010). Manual, and nightly.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATA: /home/runner/drumtx-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --python 3.13
+
+      # Third-party datasets are fetched for this private evaluation only and never committed
+      # (decisions 0001 and 0003). The cache is keyed by the frozen manifests.
+      - id: corpus
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DATA }}
+          key: corpus-v1-${{ hashFiles('eval/dev.csv', 'eval/test.csv') }}
+      - name: Build the corpus
+        if: steps.corpus.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$DATA/mdb-drums" "$DATA/idmt-smt-drums"
+          git clone --depth 1 https://github.com/CarlSouthall/MDBDrums "$DATA/mdb-drums/MDBDrums"
+          zip="$DATA/idmt-smt-drums/IDMT-SMT-DRUMS-V2.zip"
+          curl -sSfL -o "$zip" https://zenodo.org/records/7544164/files/IDMT-SMT-DRUMS-V2.zip
+          echo "8ee68f0cab1d66c800fa19f8be72a0b400f8e96919ac67182053f752e38697bb  $zip" | sha256sum -c
+          unzip -q "$zip" -d "$DATA/idmt-smt-drums"
+          uv run python scripts/build_corpus.py "$DATA" --fetch-egmd
+          git diff --exit-code eval/  # the rebuilt manifests must equal the frozen ones
+
+      - name: Benchmark the baseline
+        run: >
+          uv run python scripts/benchmark.py --data "$DATA"
+          --compare eval/results/baseline-dev.json --out results/baseline-dev.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: results/
+          if-no-files-found: ignore
