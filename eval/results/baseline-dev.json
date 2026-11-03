@@ -1,13 +1,12 @@
 {
-  "detector": "baseline",
+  "model": "baseline",
   "split": "dev",
-  "thresholds": {
-    "kick": 0.35,
-    "snare": 0.03,
-    "hihat": 0.014,
-    "tom": 0.2,
-    "cymbal": 0.03
-  },
+  "commit": "e404a7240586a6a2aa38cb3f05ba1815bf940f37",
+  "date": "2026-11-03",
+  "clips": 189,
+  "audio_minutes": 107.44,
+  "runtime_s": 64.0,
+  "s_per_audio_minute": 0.199,
   "results": {
     "strict": {
       "drum-only @ 50 ms": {
