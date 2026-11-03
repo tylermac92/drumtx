@@ -1,6 +1,6 @@
 # Model card: ADTOF Frame_RNN (`adtof`)
 
-- **Status:** integrated in M2-1, 2026-11-03. Chunked inference (M2-2), tuned presets (M2-3), calibrated confidence (M2-4), download on first use (M2-5) and the test-set results (M2-7) are still to come.
+- **Status:** integrated in M2-1 and chunked in M2-2, 2026-11-03. Tuned presets (M2-3), calibrated confidence (M2-4), download on first use (M2-5) and the test-set results (M2-7) are still to come.
 - **Chosen in:** decision 0005.
 
 ## What it is
@@ -38,7 +38,26 @@ uv run --isolated --no-project --python 3.12 --index https://download.pytorch.or
 
 The script checks the port twice and stops if either differs by more than 1e-4:
 - **PyTorch against a Keras rebuild of the network:** maximum difference 2.7e-7.
-- **ONNX Runtime against PyTorch:** maximum difference 2.5e-7.
+- **ONNX Runtime against PyTorch:** maximum difference 2.5e-7 (M2-2 asks for at most 1e-4).
+
+## Chunked inference
+
+`ModelDetector` runs the network on windows of 60 s (`MODEL_CHUNK`, 6,000 frames). Each window also gets 4 s of context on each side (`MODEL_CONTEXT`, 400 frames), which is ADTOF's own warm-up. The context is discarded and only the 60 s center is kept. Peaks are then picked on the joined curve, so a chunk boundary cannot split or duplicate a peak; `tests/test_model.py` checks this with hits on boundary frames.
+
+**Memory.** On a 10-minute file:
+- **Whole file in one run:** peak memory 2.2 GB, over the 2 GB budget (technical design §11).
+- **Chunked:** 753 MB, of which 643 MB is the test's own audio. Runtime also fell from 15.9 s to 8.3 s.
+
+**Chunked output is not identical to whole-file output.** The bidirectional GRUs carry state across the whole input, so frames anywhere in a window shift slightly, not only near its edges.
+
+| Context per side | Largest activation difference | Onsets that change |
+|---|---|---|
+| 4 s (chosen) | 0.12 | 94 of 8,920 |
+| 10 s | 0.06 | 45 |
+| 20 s | 0.05 | 33 |
+| 30 s | 0.05 | 18 |
+
+These are 11 development clips longer than 60 s, at `balanced`. Neither version is more correct: ADTOF itself trained on 4-second sequences, and it splits files longer than 10 minutes the same way. Over the whole development set, chunking moved no F-measure by more than 0.003 (any preset, subset, tolerance or class), so the shortest context was kept.
 
 ## Feature check against madmom
 
@@ -76,7 +95,7 @@ Per-class F-measure, ADTOF / baseline:
 
 **Other presets.** `strict` snare is below the baseline's `strict` (0.52 vs 0.57 on all clips at 50 ms). The preset scaling is untuned until M2-3; the benchmark's `--compare` lists this as its only regressions.
 
-**Runtime.** 0.75 s per audio minute for features and inference, on the 4-core sandbox, not the reference machine.
+**Runtime.** 0.83 s per audio minute for features and chunked inference, on the 4-core sandbox, not the reference machine.
 
 ### By source (`balanced`, 50 ms)
 
@@ -100,7 +119,6 @@ Per-class F-measure, ADTOF / baseline:
   Rhythm-game charts, which the model was trained on, mostly leave out ghost notes. E-GMD is most of the development set (by hits), so this pulls down every development-set number, most of all snare. M2-3 should tune the thresholds lower to see how much recall comes back.
 - **E-GMD hi-hat stays weak even when loud** (recall 0.64), as decision 0005 found: probably pedal and kit-specific hi-hats.
 - **Toms in MDB are mostly false positives** (precision 0.07–0.13 on only 15 reference hits), so those numbers mean little (decision 0004).
-- **Memory.** The whole file goes through the network in one run; M2-2 adds chunking.
 
 ## Fallback
 
