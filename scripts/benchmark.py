@@ -4,6 +4,7 @@
     uv run python scripts/benchmark.py --compare eval/results/baseline-dev.json
     uv run python scripts/benchmark.py --split test --release   # M2-7 and M7-4 only (decision 0004)
     uv run python scripts/benchmark.py --tune                   # best baseline thresholds
+    uv run python scripts/benchmark.py --model adtof --compare eval/results/baseline-dev.json
 
 Writes JSON and a Markdown table (default eval/results/<model>-<split>.json and .md) with the
 commit, model ID, runtime, and P/R/F per preset, subset, tolerance and class. With --compare, every
@@ -19,6 +20,7 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +37,11 @@ REPO = Path(__file__).resolve().parents[1]
 PRESETS: tuple[detect.Preset, ...] = ("strict", "balanced", "sensitive")
 SUBSETS = ("drum-only", "full-mix", "all")
 TOLERANCES = (0.05, 0.03)
-MODELS = {"baseline": detect.BaselineDetector}  # the learned detector joins in M2
+# Model files are made by scripts/convert_adtof.py under DATA until M2-5 adds the model directory.
+MODELS: dict[str, Callable[[Path], detect.Detector]] = {
+    "baseline": lambda data: detect.BaselineDetector(),
+    "adtof": lambda data: detect.ModelDetector(data / "models/adtof/frame_rnn_adtof_all_0.onnx"),
+}
 
 
 def load(path: Path, sha256: str) -> AudioBuffer:
@@ -144,7 +150,7 @@ def main() -> None:
     if args.tune:
         tune(buffers, refs)
 
-    detector = MODELS[args.model]()
+    detector = MODELS[args.model](args.data)
     totals: dict[tuple[str, str, str, float, str], np.ndarray] = {}
     start = time.perf_counter()
     for preset in PRESETS:
