@@ -8,7 +8,12 @@ version = "0.1.0.dev0"
 description = "Command-line drum transcription from audio to editable notation"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["typer>=0.12"]
+dependencies = [
+    "numpy>=2.4.6",
+    "soundfile>=0.14.0",
+    "soxr>=1.1.0",
+    "typer>=0.12",
+]
 
 [project.scripts]
 drumtx = "drumtx.cli:app"
@@ -32,7 +37,7 @@ select = ["E", "F", "I", "B", "UP"]
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["mido", "jsonschema"]
+module = ["mido", "jsonschema", "soundfile", "soxr"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
