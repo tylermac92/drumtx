@@ -68,7 +68,7 @@ The numeric targets below are provisional. They will be recalibrated after the b
 |---|---|
 | Per-class onset F-measure on a held-out test set, ±50 ms tolerance | Reported separately for drum-only and full-mix audio. Initial aim on drum-only audio: ≥ 0.85 for kick and snare, ≥ 0.75 for hi-hat. |
 | Notation validity | 100% of generated MusicXML validates against the MusicXML 4.0 schema and opens in MuseScore without errors on the development set during work (M4-5) and on the test set at release (M7-4). |
-| Runtime | ≤ 1× real time on a reference laptop CPU without separation. |
+| Runtime | ≤ 1× real time on a reference laptop CPU without separation (the reference machine is in decision 0008). |
 | Correction effort | On your own recordings, correcting the draft is faster than transcribing by hand (timed on at least two tracks in M7-1). |
 | Installation | Clean install and smoke test pass on all three operating systems in CI. |
 
