@@ -39,6 +39,7 @@ class Model:
     file: str  # the file DrumTx loads, in the cache directory
     sha256: str
     convert: Callable[[Path], None] | None = None  # turns `sources` into `file` in one folder
+    kind: str = "detector"  # or "separator" (--separate)
 
 
 def _convert_adtof(folder: Path) -> None:
@@ -69,6 +70,22 @@ def _convert_adtof(folder: Path) -> None:
         raise ProcessingError(f"Converting the ADTOF model failed:\n{result.stderr[-3000:]}")
 
 
+def _convert_umxl(folder: Path) -> None:
+    """PyTorch checkpoint → safetensors, in the separation extra's PyTorch. The checkpoint's
+    SHA-256 has already been checked, and `weights_only=True` reads tensors only: it does not run
+    code from the file. DrumTx itself loads only the safetensors file."""
+    from drumtx.separate import check_installed
+
+    check_installed()
+    import torch
+    from safetensors.torch import save_file
+
+    state = torch.load(folder / "drums-69e0ebd4.pth", map_location="cpu", weights_only=True)
+    stft = ("sample_rate", "stft.window", "transform.0.window")  # rebuilt by openunmix's Separator
+    weights = {k: v.contiguous() for k, v in state.items() if k not in stft}
+    save_file(weights, str(folder / "umxl_drums.safetensors"))
+
+
 _ADTOF_COMMIT = "b3968fb332f69b65ee07c089fc62f436503755db"
 REGISTRY = {
     "adtof": Model(
@@ -87,6 +104,19 @@ REGISTRY = {
         file="frame_rnn_adtof_all_0.onnx",
         sha256="9e2f06a1b3edf1d7943e885ed276c4983d8308bdee39646c0d4da1389c1c7e8d",
         convert=_convert_adtof,
+    ),
+    "umxl-drums": Model(
+        id="umxl-drums",
+        version="UMX-L drums-69e0ebd4",
+        license="CC BY-NC-SA 4.0 (personal, non-commercial use)",
+        url="https://zenodo.org/records/5069601/files/",
+        sources={
+            "drums-69e0ebd4.pth": "69e0ebd402a0a0622ac9a887dfbc7fb7eb3b94f7fbdc1c843c26f1575104228a"
+        },
+        file="umxl_drums.safetensors",
+        sha256="8fc45a49f6d0b92221efd4a75bb68b4a65b655d0829d0374d5f7cc7d3fb83e52",
+        convert=_convert_umxl,
+        kind="separator",
     ),
 }
 

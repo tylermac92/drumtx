@@ -144,4 +144,5 @@ def test_models_list(upstream: models.Model) -> None:
     assert "baseline" in out and "adtof (default)" in out and "not installed" in out
     models.download(upstream)
     assert str(models.cache_dir()) in out
-    assert "not installed" not in runner.invoke(app, ["models", "list"]).stdout
+    rows = runner.invoke(app, ["models", "list"]).stdout.splitlines()
+    assert "not installed" not in next(r for r in rows if r.startswith("adtof"))
