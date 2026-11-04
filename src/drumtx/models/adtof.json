@@ -1,0 +1,26 @@
+{
+  "min_gap_s": 0.03,
+  "thresholds": {
+    "strict": {
+      "kick": 0.318,
+      "snare": 0.1004,
+      "tom": 0.3569,
+      "hihat": 0.2834,
+      "cymbal": 0.4005
+    },
+    "balanced": {
+      "kick": 0.2005,
+      "snare": 0.0503,
+      "tom": 0.2525,
+      "hihat": 0.1592,
+      "cymbal": 0.2834
+    },
+    "sensitive": {
+      "kick": 0.0448,
+      "snare": 0.0178,
+      "tom": 0.1592,
+      "hihat": 0.0282,
+      "cymbal": 0.1592
+    }
+  }
+}

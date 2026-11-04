@@ -6,8 +6,9 @@ floor for the learned detector. `ModelDetector` runs the ADTOF model (decision 0
 docs/models/adtof-frame-rnn.md).
 """
 
+import json
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -42,17 +43,11 @@ THRESHOLDS: dict[DrumClass, float] = {
 }
 PRESET_SCALE: dict[Preset, float] = {"strict": 1.5, "balanced": 1.0, "sensitive": 0.67}
 
-# ADTOF's output order (its LABELS_5: GM notes 35, 38, 47, 42, 49), and its own peak picking:
-# per-class thresholds from its hyperparameters, and peaks within 20 ms combined.
+# ADTOF's output order (its LABELS_5: GM notes 35, 38, 47, 42, 49).
 MODEL_ORDER: tuple[DrumClass, ...] = ("kick", "snare", "tom", "hihat", "cymbal")
-MODEL_THRESHOLDS: dict[DrumClass, float] = {
-    "kick": 0.22,
-    "snare": 0.24,
-    "tom": 0.32,
-    "hihat": 0.22,
-    "cymbal": 0.30,
-}
-MODEL_MIN_GAP_S = 0.02
+# Per-preset, per-class thresholds and the minimum gap, tuned on the development set
+# (`scripts/benchmark.py --model adtof --tune`; docs/models/adtof-frame-rnn.md).
+MODEL_PRESETS_FILE = Path(__file__).with_name("models") / "adtof.json"
 # Chunked inference: frames kept per network run, and context frames discarded on each side
 # (ADTOF's warm-up). Effect on memory and accuracy: docs/models/adtof-frame-rnn.md.
 MODEL_CHUNK = 6000
@@ -104,13 +99,12 @@ def pick_peaks(act: np.ndarray, threshold: float, min_gap_s: float = MIN_GAP_S) 
 def to_events(
     acts: dict[DrumClass, np.ndarray],
     thresholds: dict[DrumClass, float],
-    preset: Preset,
     start_s: float,
     min_gap_s: float = MIN_GAP_S,
 ) -> list[DrumEvent]:
     events = []
     for c, act in acts.items():
-        threshold = thresholds[c] * PRESET_SCALE[preset]
+        threshold = thresholds[c]
         for f in pick_peaks(act, threshold, min_gap_s).tolist():
             # Not calibrated (that is M2-4): 0.5 at the threshold, rising toward 1.
             confidence = float(act[f] / (act[f] + threshold))
@@ -127,7 +121,8 @@ def to_events(
 
 class BaselineDetector:
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
-        return to_events(baseline_activations(audio.mono), THRESHOLDS, preset, audio.start_s)
+        thresholds = {c: t * PRESET_SCALE[preset] for c, t in THRESHOLDS.items()}
+        return to_events(baseline_activations(audio.mono), thresholds, audio.start_s)
 
 
 class ModelDetector:
@@ -137,6 +132,7 @@ class ModelDetector:
         import onnxruntime as ort
 
         self.session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        self.presets: dict[str, Any] = json.loads(MODEL_PRESETS_FILE.read_text("utf-8"))
 
     def activations(self, spectrogram: np.ndarray) -> dict[DrumClass, np.ndarray]:
         """Run the network over overlapping windows, to bound memory.
@@ -154,4 +150,5 @@ class ModelDetector:
 
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
         acts = self.activations(features.spectrogram(audio.mono))
-        return to_events(acts, MODEL_THRESHOLDS, preset, audio.start_s, MODEL_MIN_GAP_S)
+        thresholds = self.presets["thresholds"][preset]
+        return to_events(acts, thresholds, audio.start_s, self.presets["min_gap_s"])

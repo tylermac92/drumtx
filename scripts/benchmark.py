@@ -5,6 +5,7 @@
     uv run python scripts/benchmark.py --split test --release   # M2-7 and M7-4 only (decision 0004)
     uv run python scripts/benchmark.py --tune                   # best baseline thresholds
     uv run python scripts/benchmark.py --model adtof --compare eval/results/baseline-dev.json
+    uv run python scripts/benchmark.py --model adtof --tune     # rewrites the model's presets
 
 Writes JSON and a Markdown table (default eval/results/<model>-<split>.json and .md) with the
 commit, model ID, runtime, and P/R/F per preset, subset, tolerance and class. With --compare, every
@@ -28,7 +29,7 @@ import numpy as np
 import soundfile as sf
 import soxr
 
-from drumtx import detect
+from drumtx import detect, features
 from drumtx.evaluate import match_counts, scores
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 from drumtx.schema import CLASSES, DrumClass
@@ -90,6 +91,61 @@ def tune(buffers: dict[str, AudioBuffer], refs: dict[str, dict[DrumClass, np.nda
         print(f"{c:7} best balanced threshold {best:.4f}  F {f(best):.3f}")
 
 
+# Model preset tuning (M2-3): F-beta per preset, threshold grid, minimum-gap candidates.
+BETA: dict[detect.Preset, float] = {"strict": 0.5, "balanced": 1.0, "sensitive": 2.0}
+GRID = [float(t) for t in np.round(np.geomspace(0.01, 0.8, 39), 4)]
+GAPS = (0.02, 0.03, 0.04, 0.05)
+Counts = dict[tuple[float, str, float, str], np.ndarray]  # (gap, class, threshold, subset)
+
+
+def f_beta(counts: np.ndarray, beta: float) -> float:
+    tp, fp, fn = (int(n) for n in counts)
+    b2 = beta * beta
+    return (1 + b2) * tp / ((1 + b2) * tp + b2 * fn + fp) if tp else 0.0
+
+
+def choose_presets(counts: Counts) -> dict[str, Any]:
+    """Thresholds per preset and class, and one minimum gap, from dev-set counts.
+
+    A threshold maximizes F-beta (0.5 for strict, 1 for balanced, 2 for sensitive), averaged over
+    the drum-only and full-mix subsets so that neither dominates (decision 0004). Toms use
+    drum-only alone: full-mix toms are too few to tune on (decision 0010). The gap maximizes the
+    summed balanced scores; the smallest wins a tie.
+    """
+
+    def score(gap: float, c: str, t: float, beta: float) -> float:
+        subsets = ("drum-only",) if c == "tom" else ("drum-only", "full-mix")
+        return sum(f_beta(counts[(gap, c, t, s)], beta) for s in subsets) / len(subsets)
+
+    gap = max(GAPS, key=lambda g: sum(max(score(g, c, t, 1) for t in GRID) for c in CLASSES))
+    thresholds = {
+        p: {c: max(GRID, key=lambda t: score(gap, c, t, b)) for c in detect.MODEL_ORDER}
+        for p, b in BETA.items()
+    }
+    return {"min_gap_s": gap, "thresholds": thresholds}
+
+
+def tune_model(
+    detector: detect.ModelDetector,
+    buffers: dict[str, AudioBuffer],
+    refs: dict[str, dict[DrumClass, np.ndarray]],
+    subsets: dict[str, str],
+) -> None:
+    """Tune the model's presets on the development set and write them to its presets file."""
+    acts = {k: detector.activations(features.spectrogram(b.mono)) for k, b in buffers.items()}
+    counts: Counts = {}
+    for gap in GAPS:
+        for c in CLASSES:
+            for t in GRID:
+                for k, a in acts.items():
+                    est = detect.pick_peaks(a[c], t, gap) / detect.FPS
+                    key = (gap, c, t, subsets[k])
+                    counts[key] = counts.get(key, 0) + np.array(match_counts(refs[k][c], est, 0.05))
+    presets = choose_presets(counts)
+    detect.MODEL_PRESETS_FILE.write_text(json.dumps(presets, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {detect.MODEL_PRESETS_FILE}:\n{json.dumps(presets, indent=2)}")
+
+
 def compare(new: dict[str, Any], old: dict[str, Any], margin: float) -> list[str]:
     """Lines for every F-measure that moved by more than `margin`; regressions first."""
     worse, better = [], []
@@ -139,18 +195,26 @@ def main() -> None:
     p.add_argument("--out", type=Path, help="results JSON; .md is written beside it")
     p.add_argument("--compare", type=Path, help="previous results JSON")
     p.add_argument("--margin", type=float, default=0.02, help="F-measure drop that counts")
-    p.add_argument("--tune", action="store_true", help="print the best baseline thresholds first")
+    p.add_argument(
+        "--tune",
+        action="store_true",
+        help="first tune thresholds on the dev set: printed for baseline, written for a model",
+    )
     args = p.parse_args()
+    if args.tune and args.split != "dev":
+        sys.exit("Thresholds are tuned on the development set only (M2-3).")
     if args.split == "test" and not args.release:
         sys.exit("The test set is for release evaluation only (M2-7, M7-4); add --release.")
 
     clips = list(csv.DictReader((REPO / "eval" / f"{args.split}.csv").open()))
     buffers = {r["clip_id"]: load(args.data / r["audio"], r["audio_sha256"]) for r in clips}
     refs = {r["clip_id"]: reference(args.data, r["clip_id"]) for r in clips}
-    if args.tune:
-        tune(buffers, refs)
-
     detector = MODELS[args.model](args.data)
+    if args.tune and isinstance(detector, detect.ModelDetector):
+        tune_model(detector, buffers, refs, {r["clip_id"]: r["subset"] for r in clips})
+        detector = MODELS[args.model](args.data)  # reload with the new presets
+    elif args.tune:
+        tune(buffers, refs)
     totals: dict[tuple[str, str, str, float, str], np.ndarray] = {}
     start = time.perf_counter()
     for preset in PRESETS:

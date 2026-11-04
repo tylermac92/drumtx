@@ -1,9 +1,10 @@
-"""M2-1 and M2-2: ADTOF input features, and ModelDetector run on a stand-in ONNX model.
+"""M2-1 to M2-3: ADTOF features, presets, and ModelDetector run on a stand-in ONNX model.
 
 The real model is never in the repository (decision 0005); its accuracy is checked by the
 benchmark (eval/results/adtof-dev.json) and its features against madmom (the model card).
 """
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,6 +16,7 @@ from onnx import TensorProto, helper
 
 from drumtx import detect, features
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
+from drumtx.schema import CLASSES
 
 
 def test_spectrogram_frames_and_bands() -> None:
@@ -26,6 +28,15 @@ def test_spectrogram_frames_and_bands() -> None:
     assert abs(np.log2(peak_hz / 1000)) < 1 / 12  # within a semitone
     assert not features.spectrogram(np.zeros(441 * 10 + 1, np.float32)).any()
     assert len(features.spectrogram(np.zeros(441 * 10 + 1, np.float32))) == 11
+
+
+def test_presets_file() -> None:
+    """Tuned presets (M2-3): every class, and stricter presets never have lower thresholds."""
+    presets = json.loads(detect.MODEL_PRESETS_FILE.read_text("utf-8"))
+    assert 0 < presets["min_gap_s"] < 0.1
+    th = presets["thresholds"]
+    for c in CLASSES:
+        assert 0 < th["sensitive"][c] < th["balanced"][c] < th["strict"][c] < 1
 
 
 def stand_in_model(path: Path) -> None:
