@@ -250,6 +250,7 @@ def compare(new: dict[str, Any], old: dict[str, Any], margin: float) -> list[str
 
 
 def markdown(result: dict[str, Any]) -> str:
+    separation = [result["separation_s_per_audio_minute"]] if result.get("separate") else []
     out = [
         f"# Benchmark: `{result['model']}` on the {result['split']} set",
         "",
@@ -258,6 +259,7 @@ def markdown(result: dict[str, Any]) -> str:
         f"- Clips: {result['clips']} ({result['audio_minutes']:.1f} minutes of audio)",
         f"- Detection runtime: {result['runtime_s']:.1f} s "
         f"({result['s_per_audio_minute']:.2f} s per audio minute, all presets)",
+        *[f"- Separation (CPU): {sep:.1f} s per audio minute" for sep in separation],
         "",
         "F-measure per class:",
         "",

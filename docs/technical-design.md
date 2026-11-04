@@ -79,7 +79,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 |---|---|---|
 | `-o, --out-dir DIR` | `./<input-name>_drumtx/` | Where outputs go. |
 | `--formats LIST` | `musicxml,midi,json,csv,report` | Which outputs to write. |
-| `--separate / --no-separate` | off | Isolate drums first. Needs `drumtx[separation]`. Recommended for full mixes. |
+| `--separate / --no-separate` | off | Isolate drums first. Needs `drumtx[separation]`. On full mixes it helps kick and toms but costs some snare and cymbal (docs/models/umxl-drums.md). |
 | `--sensitivity` | `balanced` | `strict` misses more hits but adds fewer false ones; `sensitive` does the opposite. |
 | `--bpm FLOAT` | estimated | Constrains the beat tracker to a tempo. |
 | `--time-signature N/4` | `4/4` | Meter used for downbeats and barlines. |
