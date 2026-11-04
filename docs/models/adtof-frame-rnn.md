@@ -1,6 +1,6 @@
 # Model card: ADTOF Frame_RNN (`adtof`)
 
-- **Status:** integrated in M2-1, chunked in M2-2 and its presets tuned in M2-3, 2026-11-03. Calibrated confidence (M2-4), download on first use (M2-5) and the test-set results (M2-7) are still to come.
+- **Status:** integrated in M2-1, chunked in M2-2, presets tuned in M2-3, confidence and velocity fitted in M2-4 (2026-11-04). Download on first use (M2-5) and the test-set results (M2-7) are still to come.
 - **Chosen in:** decision 0005.
 
 ## What it is
@@ -15,7 +15,7 @@ The `Frame_RNN_adtofAll_0` checkpoint from [ADTOF](https://github.com/MZehren/AD
 | Network | 2 × (two 3×3 convolutions with batch norm, max pool over frequency), 3 bidirectional GRUs of 60 units, dense layer with sigmoid. 450,125 parameters. |
 | Output | (frames, 5) onset probabilities in ADTOF's order: kick, snare, tom, hi-hat, cymbal (GM notes 35, 38, 47, 42, 49) |
 | Peak picking | madmom's note peak picking with ADTOF's settings (`detect.pick_peaks`). Per-class thresholds and the minimum gap come from the preset (below). ADTOF's `labelOffset` is 0 for this model, so no time shift. |
-| Confidence and velocity | Not calibrated yet (M2-4): `p / (p + threshold)`, and velocity = 127 × confidence. |
+| Confidence and velocity | Calibrated confidence and approximate velocity, both computed from the peak activation (below). |
 
 ## Presets
 
@@ -50,6 +50,33 @@ uv run python scripts/benchmark.py --model adtof --tune
 **M2-3's criterion is met:** `strict` has higher precision and `sensitive` higher recall than `balanced` for every class. This holds on all clips, and on the drum-only and full-mix subsets separately. The one exception is full-mix toms, where recall ties at 14 of 15 hits.
 
 **Trade-off: the low snare threshold.** It recovers many quiet E-GMD notes (snare F 0.57 → 0.80) but adds false hits on IDMT's simple patterns (0.89 → 0.75). The curve is flat between thresholds 0.05 and 0.09. Weighting the three sources equally would choose about 0.07: E-GMD 0.78, MDB 0.75, IDMT 0.80. Revisit this with your own recordings in M7-1.
+
+## Confidence and velocity
+
+Both come from the peak activation `p` of each detected hit, per class. They are fitted together with the presets by `benchmark.py --model adtof --tune` and stored in the same file.
+
+**Confidence** is the estimated probability that the hit is real, i.e. matches a reference hit within 50 ms.
+- **Formula:** `sigmoid(b0 + b1 · logit(p))`, a logistic fit (Platt scaling).
+- **Fitted on:** every development-set detection at the `sensitive` thresholds. These include the detections of the other presets, so the same values hold for all three.
+- **Optimism:** it was fitted and checked on the same clips; the test set (M2-7) gives the unbiased check.
+
+Reliability on the development set: precision of the detections in each confidence bin, with the number of detections in parentheses.
+
+| Class | 0–0.2 | 0.2–0.4 | 0.4–0.6 | 0.6–0.8 | 0.8–1 |
+|---|---|---|---|---|---|
+| kick | — (1) | 0.32 (1,295) | 0.48 (880) | 0.65 (955) | 0.95 (7,414) |
+| snare | 0.11 (2,166) | 0.26 (3,313) | 0.55 (1,787) | 0.80 (2,363) | 0.93 (9,531) |
+| hi-hat | 0.23 (639) | 0.32 (3,116) | 0.45 (2,020) | 0.66 (2,449) | 0.93 (10,285) |
+| tom | 0.16 (1,510) | 0.28 (1,764) | 0.48 (1,284) | 0.72 (1,450) | 0.86 (954) |
+| cymbal | — | 0.34 (244) | 0.47 (281) | 0.74 (348) | 0.94 (2,415) |
+
+**M2-4's first criterion is met:** precision rises with confidence for every class, and lies within or near each bin's range. Low-confidence hits are mostly the extra ones `sensitive` adds; at `balanced`, most hits are in the top bin.
+
+**Velocity is approximate.** It maps the activation through matching quantiles (11 points per class) of the recorded velocities of correctly detected E-GMD hits. E-GMD is the only development source with recorded velocities, from electronic-kit sensors.
+- **Monotone:** a stronger activation never gives a quieter note. Velocity is always within 1–127 and spans the reference range, about 5–127.
+- **Correlation:** activation tracks the recorded velocity only moderately: correlation 0.35–0.59 by class, versus 0.43–0.81 for the frame's spectral energy.
+- **Why not energy:** energy also depends on recording level and on other instruments, so activation is used. A per-file energy measure is a possible later improvement.
+- **What to rely on:** treat velocity as a rough loud/soft hint, not a measurement.
 
 ## Files
 

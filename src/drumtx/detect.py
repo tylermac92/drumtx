@@ -7,6 +7,7 @@ docs/models/adtof-frame-rnn.md).
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
@@ -45,8 +46,8 @@ PRESET_SCALE: dict[Preset, float] = {"strict": 1.5, "balanced": 1.0, "sensitive"
 
 # ADTOF's output order (its LABELS_5: GM notes 35, 38, 47, 42, 49).
 MODEL_ORDER: tuple[DrumClass, ...] = ("kick", "snare", "tom", "hihat", "cymbal")
-# Per-preset, per-class thresholds and the minimum gap, tuned on the development set
-# (`scripts/benchmark.py --model adtof --tune`; docs/models/adtof-frame-rnn.md).
+# Per-preset, per-class thresholds, the minimum gap, and the confidence and velocity mappings, all
+# fitted on the development set (`scripts/benchmark.py --model adtof --tune`; the model card).
 MODEL_PRESETS_FILE = Path(__file__).with_name("models") / "adtof.json"
 # Chunked inference: frames kept per network run, and context frames discarded on each side
 # (ADTOF's warm-up). Effect on memory and accuracy: docs/models/adtof-frame-rnn.md.
@@ -96,24 +97,32 @@ def pick_peaks(act: np.ndarray, threshold: float, min_gap_s: float = MIN_GAP_S) 
     return np.array(out, dtype=int)
 
 
+# (class, peak activation) → (confidence in [0, 1], velocity in 1–127)
+Rate = Callable[[DrumClass, float], tuple[float, int]]
+
+
+def logit(a: Any) -> Any:
+    a = np.clip(a, 1e-6, 1 - 1e-6)
+    return np.log(a / (1 - a))
+
+
 def to_events(
     acts: dict[DrumClass, np.ndarray],
     thresholds: dict[DrumClass, float],
+    rate: Rate,
     start_s: float,
     min_gap_s: float = MIN_GAP_S,
 ) -> list[DrumEvent]:
     events = []
     for c, act in acts.items():
-        threshold = thresholds[c]
-        for f in pick_peaks(act, threshold, min_gap_s).tolist():
-            # Not calibrated (that is M2-4): 0.5 at the threshold, rising toward 1.
-            confidence = float(act[f] / (act[f] + threshold))
+        for f in pick_peaks(act, thresholds[c], min_gap_s).tolist():
+            confidence, velocity = rate(c, float(act[f]))
             events.append(
                 DrumEvent(
                     time_s=round(start_s + f / FPS, 3),
                     cls=c,
-                    confidence=round(confidence, 3),
-                    velocity=max(1, min(127, round(127 * confidence))),
+                    confidence=round(min(1.0, max(0.0, confidence)), 3),
+                    velocity=max(1, min(127, velocity)),
                 )
             )
     return sorted(events, key=lambda e: (e.time_s, CLASSES.index(e.cls)))
@@ -122,7 +131,13 @@ def to_events(
 class BaselineDetector:
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
         thresholds = {c: t * PRESET_SCALE[preset] for c, t in THRESHOLDS.items()}
-        return to_events(baseline_activations(audio.mono), thresholds, audio.start_s)
+
+        def rate(c: DrumClass, a: float) -> tuple[float, int]:
+            # Not calibrated: 0.5 at the threshold, rising toward 1.
+            confidence = a / (a + thresholds[c])
+            return confidence, round(127 * confidence)
+
+        return to_events(baseline_activations(audio.mono), thresholds, rate, audio.start_s)
 
 
 class ModelDetector:
@@ -151,4 +166,12 @@ class ModelDetector:
     def detect(self, audio: AudioBuffer, preset: Preset = "balanced") -> list[DrumEvent]:
         acts = self.activations(features.spectrogram(audio.mono))
         thresholds = self.presets["thresholds"][preset]
-        return to_events(acts, thresholds, audio.start_s, self.presets["min_gap_s"])
+        return to_events(acts, thresholds, self.rate, audio.start_s, self.presets["min_gap_s"])
+
+    def rate(self, c: DrumClass, a: float) -> tuple[float, int]:
+        """Calibrated confidence (logistic in the activation's logit) and approximate velocity
+        (the activation mapped through quantiles of reference velocities)."""
+        b0, b1 = self.presets["confidence"][c]
+        v = self.presets["velocity"][c]
+        confidence = float(1 / (1 + np.exp(-(b0 + b1 * logit(a)))))
+        return confidence, round(float(np.interp(a, v["activation"], v["velocity"])))

@@ -59,7 +59,7 @@ Storing the measure and beat number of every beat, rather than a single meter, i
 |---|---|---|
 | `time_s` | number ≥ 0 | When the hit happened. |
 | `class` | class name | One of the [instrument classes](#instrument-classes). |
-| `confidence` | 0–1 | The detector's calibrated peak activation. |
+| `confidence` | 0–1 | The detector's calibrated peak activation (not calibrated for `--model baseline`). |
 | `velocity` | integer 1–127 | Estimated loudness (approximate). |
 | `quantized` | object or `null` | Grid position; `null` before quantization. |
 | `quantized.measure`, `.beat` | integer | The beat the hit belongs to. |

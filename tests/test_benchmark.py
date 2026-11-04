@@ -1,10 +1,21 @@
-"""M1-6 and M2-3: the benchmark's regression comparison and preset tuning."""
+"""M1-6 to M2-4: the benchmark's regression comparison, preset tuning and calibration."""
 
 from typing import Any
 
 import numpy as np
 import pytest
-from benchmark import GAPS, GRID, Counts, choose_presets, compare, f_beta, markdown
+from benchmark import (
+    GAPS,
+    GRID,
+    Counts,
+    choose_presets,
+    compare,
+    f_beta,
+    fit_logistic,
+    markdown,
+    quantile_map,
+    reliability,
+)
 
 from drumtx.schema import CLASSES
 
@@ -69,3 +80,24 @@ def test_choose_presets_orders_thresholds() -> None:
     for c in CLASSES:
         assert th["strict"][c] > th["balanced"][c] > th["sensitive"][c]
     assert th["balanced"]["tom"] == th["balanced"]["kick"]
+
+
+def test_fit_logistic_recovers_parameters() -> None:
+    rng = np.random.default_rng(0)
+    x = rng.normal(0, 2, 20000)
+    y = (rng.random(len(x)) < 1 / (1 + np.exp(-(0.5 + 1.5 * x)))).astype(float)
+    b0, b1 = fit_logistic(x, y)
+    assert b0 == pytest.approx(0.5, abs=0.1) and b1 == pytest.approx(1.5, abs=0.1)
+
+
+def test_quantile_map_is_monotone() -> None:
+    rng = np.random.default_rng(1)
+    m = quantile_map(rng.random(500), rng.integers(1, 128, 500).astype(float))
+    assert len(m["activation"]) == len(m["velocity"]) == 11
+    assert np.all(np.diff(m["activation"]) >= 0) and np.all(np.diff(m["velocity"]) >= 0)
+
+
+def test_reliability_bins() -> None:
+    conf = np.array([0.1, 0.15, 0.5, 0.9, 1.0])
+    hit = np.array([0.0, 1.0, 1.0, 1.0, 1.0])
+    assert reliability(conf, hit) == [("0.0–0.2", 2, 0.5), ("0.4–0.6", 1, 1.0), ("0.8–1.0", 2, 1.0)]
