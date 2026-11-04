@@ -30,7 +30,7 @@ import numpy as np
 import soundfile as sf
 import soxr
 
-from drumtx import detect, features
+from drumtx import detect, features, models
 from drumtx.evaluate import match_counts, scores
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 from drumtx.schema import CLASSES, DrumClass
@@ -39,10 +39,10 @@ REPO = Path(__file__).resolve().parents[1]
 PRESETS: tuple[detect.Preset, ...] = ("strict", "balanced", "sensitive")
 SUBSETS = ("drum-only", "full-mix", "all")
 TOLERANCES = (0.05, 0.03)
-# Model files are made by scripts/convert_adtof.py under DATA until M2-5 adds the model directory.
+# The learned model comes from the model directory, downloaded on first use (drumtx.models).
 MODELS: dict[str, Callable[[Path], detect.Detector]] = {
     "baseline": lambda data: detect.BaselineDetector(),
-    "adtof": lambda data: detect.ModelDetector(data / "models/adtof/frame_rnn_adtof_all_0.onnx"),
+    "adtof": lambda data: detect.ModelDetector(models.get_model("adtof", offline=False)),
 }
 
 

@@ -17,3 +17,9 @@ class MissingDependencyError(DrumtxError):
     """FFmpeg, an optional extra, or a model while offline is missing."""
 
     exit_code = 3
+
+
+class ProcessingError(DrumtxError):
+    """Processing failed, e.g. a model file failed its SHA-256 check or could not be converted."""
+
+    exit_code = 4

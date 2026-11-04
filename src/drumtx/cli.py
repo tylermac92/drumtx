@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from drumtx import pipeline, render
+from drumtx import models, pipeline, render
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -89,6 +89,16 @@ def transcribe(
             help="strict misses more hits but adds fewer false ones; sensitive the opposite."
         ),
     ] = "balanced",
+    model: Annotated[
+        str,
+        typer.Option(
+            help="Detection model (`drumtx models list`). baseline needs no download.",
+        ),
+    ] = models.DEFAULT,
+    offline: Annotated[
+        bool,
+        typer.Option("--offline", help="Never access the network; fail if the model is missing."),
+    ] = False,
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Ignore cached stage outputs and recompute.")
     ] = False,
@@ -110,11 +120,15 @@ def transcribe(
         end=end,
         max_duration=max_duration,
         sensitivity=sensitivity,
+        model=model,
+        offline=offline,
         no_cache=no_cache,
         force=force,
     )
 
     def work() -> None:
+        if model != models.BASELINE:
+            models.spec(model)  # an unknown ID fails before any slow work
         render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
         pipeline.run(pipeline.RunContext.create(config))
 
@@ -161,11 +175,50 @@ def evaluate(
     _run(False, work)
 
 
+models_app = typer.Typer(help="Manage model files (for offline use).", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("list", help="Available models and whether each is installed.")
+def models_list() -> None:
+    def status(m: models.Model) -> str:
+        return "installed" if (models.cache_dir() / m.file).exists() else "not installed"
+
+    rows = [(models.BASELINE, "classical detector", "built in", "DrumTx")]
+    rows += [(m.id, m.version, status(m), m.license) for m in models.REGISTRY.values()]
+    for model_id, model_version, state, license_ in rows:
+        default = " (default)" if model_id == models.DEFAULT else ""
+        typer.echo(f"{model_id + default:<20} {model_version:<22} {state:<14} {license_}")
+    typer.echo(f"\nModel directory: {models.cache_dir()}")
+
+
+@models_app.command("download", help="Download (and verify) a model now, for offline use.")
+def models_download(
+    model_id: Annotated[
+        str, typer.Argument(metavar="MODEL", help="Model ID.", show_default=True)
+    ] = models.DEFAULT,
+) -> None:
+    _setup_logging(verbose=False, quiet=False)
+
+    def work() -> None:
+        m = models.spec(model_id)
+        path = models.cache_dir() / m.file
+        if path.exists():
+            try:
+                models.get_model(model_id, offline=True)
+                log.info("%s is already installed: %s", model_id, path)
+                return
+            except DrumtxError as e:
+                log.warning("Replacing it. %s", e)
+        models.download(m)
+
+    _run(False, work)
+
+
 # The other commands from the Technical Design Document §4 are stubs until their milestones land.
 _COMMANDS = {
     "render": "Re-quantize and re-render from an (edited) events JSON or CSV.",
     "preview": "Mix the original audio with synthesized detected hits.",
-    "models": "Manage model files (for offline use).",
     "doctor": "Check the environment: Python, decoders, FFmpeg, extras, models.",
 }
 

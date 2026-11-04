@@ -48,7 +48,7 @@ PRESET_SCALE: dict[Preset, float] = {"strict": 1.5, "balanced": 1.0, "sensitive"
 MODEL_ORDER: tuple[DrumClass, ...] = ("kick", "snare", "tom", "hihat", "cymbal")
 # Per-preset, per-class thresholds, the minimum gap, and the confidence and velocity mappings, all
 # fitted on the development set (`scripts/benchmark.py --model adtof --tune`; the model card).
-MODEL_PRESETS_FILE = Path(__file__).with_name("models") / "adtof.json"
+MODEL_PRESETS_FILE = Path(__file__).with_name("presets") / "adtof.json"
 # Chunked inference: frames kept per network run, and context frames discarded on each side
 # (ADTOF's warm-up). Effect on memory and accuracy: docs/models/adtof-frame-rnn.md.
 MODEL_CHUNK = 6000
@@ -141,7 +141,7 @@ class BaselineDetector:
 
 
 class ModelDetector:
-    """The ADTOF Frame_RNN model as ONNX, made by scripts/convert_adtof.py."""
+    """The ADTOF Frame_RNN model as ONNX, from `drumtx models download adtof`."""
 
     def __init__(self, path: Path) -> None:
         import onnxruntime as ort

@@ -25,7 +25,9 @@ def wav(tmp_path: Path) -> Path:
 
 
 def transcribe(wav: Path, out: Path, *extra: str) -> tuple[int, str]:
-    result = runner.invoke(app, ["transcribe", str(wav), "-o", str(out), "-q", *extra])
+    result = runner.invoke(
+        app, ["transcribe", str(wav), "-o", str(out), "-q", "--model", "baseline", *extra]
+    )
     return result.exit_code, result.stderr
 
 

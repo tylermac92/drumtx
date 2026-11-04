@@ -20,8 +20,8 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
-from drumtx import ingest, render
-from drumtx.detect import BaselineDetector, Preset
+from drumtx import detect, ingest, models, render
+from drumtx.detect import Preset
 from drumtx.schema import CLASSES, DrumEvent, event_from_json, event_to_json
 
 log = logging.getLogger("drumtx")
@@ -38,8 +38,18 @@ class Config:
     end: float | None = None
     max_duration: float = ingest.DEFAULT_MAX_DURATION_S
     sensitivity: Preset = "balanced"
+    model: str = models.DEFAULT
+    offline: bool = False
     no_cache: bool = False
     force: bool = False
+
+    @property
+    def model_fingerprint(self) -> str:
+        """Changes when the model file or its presets do, so cached detections are not reused."""
+        if self.model == models.BASELINE:
+            return self.model
+        presets = hashlib.sha256(detect.MODEL_PRESETS_FILE.read_bytes()).hexdigest()
+        return f"{self.model}:{models.spec(self.model).sha256}:{presets}"
 
 
 @dataclass(frozen=True)
@@ -100,12 +110,22 @@ def _render(ctx: RunContext, events: list[DrumEvent]) -> list[Path]:
             "end": cfg.end,
             "max_duration": cfg.max_duration,
         },
-        models={"detector": "baseline", "beat_tracker": None, "separator": None},
+        models={"detector": cfg.model, "beat_tracker": None, "separator": None},
         csv_sha256=hashlib.sha256(csv_data).hexdigest(),
     )
     if not events:
         log.warning("No drum events detected.")
     return render.write_events(cfg.out_dir, cfg.input.stem, csv_data, doc)
+
+
+def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:
+    cfg = ctx.config
+    detector: detect.Detector
+    if cfg.model == models.BASELINE:
+        detector = detect.BaselineDetector()
+    else:
+        detector = detect.ModelDetector(models.get_model(cfg.model, cfg.offline))
+    return detector.detect(audio, cfg.sensitivity)
 
 
 STAGES = [
@@ -120,10 +140,10 @@ STAGES = [
     ),
     Stage(
         "detect",
-        run=lambda ctx, audio: BaselineDetector().detect(audio, ctx.config.sensitivity),
+        run=_detect,
         summary=_detect_summary,
         deps=("ingest",),
-        params=("sensitivity",),
+        params=("sensitivity", "model_fingerprint"),
         dump=lambda events: json.dumps([event_to_json(e) for e in events]).encode(),
         load=lambda data: [event_from_json(d) for d in json.loads(data)],
     ),

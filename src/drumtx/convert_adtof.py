@@ -1,8 +1,8 @@
 # mypy: disallow-subclassing-any=False, warn-return-any=False
 """Download the ADTOF Frame_RNN checkpoint and convert it to ONNX (M2-1; see docs/models).
 
-Runs once, in a throwaway environment with TensorFlow and PyTorch (the command is in the model
-card); DrumTx itself needs neither. Steps:
+Never imported by DrumTx: `drumtx models download adtof` runs it once, in a throwaway environment
+that uv builds with TensorFlow and PyTorch (drumtx.models); DrumTx itself needs neither. Steps:
 1. Download the checkpoint from a pinned ADTOF commit, unless present, and check its SHA-256.
 2. Read it with TensorFlow (a checkpoint holds only tensors, no code) and port it to PyTorch.
 3. Check the port against a Keras rebuild of the same network.
