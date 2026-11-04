@@ -1,7 +1,7 @@
 name: Model conversion
 
 # `drumtx models download` on every OS (M2-5, M2-6): downloads each upstream checkpoint, converts it
-# (ADTOF with uv, Open-Unmix in the separation extra), and checks the result against the SHA-256
+# (ADTOF and Beat This! with uv, Open-Unmix in the separation extra), and checks the result against the SHA-256
 # pinned in src/drumtx/models.py. Runs when a conversion changes, and on demand. The converted file is not kept (decisions 0001 and 0003).
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ on:
       - src/drumtx/models.py
       - src/drumtx/convert_adtof.py
       - src/drumtx/separate.py
+      - src/drumtx/convert_beat_this.py
       - .github/workflows/model-conversion.yml
 
 jobs:
@@ -28,4 +29,5 @@ jobs:
       - run: uv sync --locked --python 3.13 --extra separation
       - run: uv run drumtx models download adtof
       - run: uv run drumtx models download umxl-drums
+      - run: uv run drumtx models download beat-this-final0
       - run: uv run drumtx models list

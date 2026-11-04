@@ -69,7 +69,7 @@ The table shows mean beat and downbeat F-measure at ±70 ms (`mir_eval`). There 
   - 22,050 Hz audio, 1024-point FFT, hop of 441 samples (50 frames per second);
   - 128 Slaney mel bands from 30 Hz to 11 kHz;
   - magnitude spectrum, `log1p(1000·x)`.
-- Accept the NumPy and ONNX path only if its beats match the upstream package within 1 frame on the development rhythm subset. Otherwise, use the PyTorch fallback extra.
+- Accept the NumPy and ONNX path only if its beats match the upstream package within 1 frame on the development rhythm subset. Otherwise, use the PyTorch fallback extra. *Done in M3-1: on all 67 clips, beats and downbeats are identical to upstream's, so no fallback extra is needed (docs/models/beat-this.md).*
 
 ## Reproducing
 

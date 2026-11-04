@@ -95,9 +95,10 @@ def test_transcribe_progress(audio: Path, tmp_path: Path) -> None:
         app, ["transcribe", str(audio), "--model", "baseline", "-o", str(tmp_path / "out")]
     )
     assert result.exit_code == 0, result.output
-    assert "[1/3] Ingest     in.wav  0:03, stereo" in result.stderr
-    assert "[2/3] Detect     0 events (kick 0, snare 0, hihat 0, tom 0, cymbal 0)" in result.stderr
-    assert "[3/3] Render     in.events.json, in.events.csv" in result.stderr
+    assert "[1/4] Ingest     in.wav  0:03, stereo" in result.stderr
+    assert "[2/4] Detect     0 events (kick 0, snare 0, hihat 0, tom 0, cymbal 0)" in result.stderr
+    assert "[3/4] Track      6 beats, about 120 BPM" in result.stderr  # conftest's stand-in
+    assert "[4/4] Render     in.events.json, in.events.csv" in result.stderr
     assert result.stdout == ""
 
 
