@@ -19,7 +19,7 @@ The `Frame_RNN_adtofAll_0` checkpoint from [ADTOF](https://github.com/MZehren/AD
 
 ## Presets
 
-`--sensitivity` chooses one of three sets of per-class thresholds. They are stored with the model in `src/drumtx/models/adtof.json` and tuned on the development set only:
+`--sensitivity` chooses one of three sets of per-class thresholds. They are stored with the model in `src/drumtx/presets/adtof.json` and tuned on the development set only:
 
 ```bash
 uv run python scripts/benchmark.py --model adtof --tune
