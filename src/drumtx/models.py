@@ -48,8 +48,9 @@ def _convert_adtof(folder: Path) -> None:
             "Converting the ADTOF model needs uv (https://docs.astral.sh/uv/). Install it, "
             "then run `drumtx models download adtof`."
         )
+    index: list[str] = []
     if sys.platform == "darwin":  # no CPU-only builds for macOS; the plain ones are CPU-only
-        packages, index = ["tensorflow==2.21.0", "torch==2.15.0"], []
+        packages = ["tensorflow==2.21.0", "torch==2.15.0"]
     else:
         packages = ["tensorflow-cpu==2.21.0", "torch==2.15.0+cpu"]
         index = ["--index", "https://download.pytorch.org/whl/cpu"]
