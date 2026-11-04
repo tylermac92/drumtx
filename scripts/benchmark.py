@@ -270,6 +270,10 @@ def markdown(result: dict[str, Any]) -> str:
         for table, per_class in tables.items():
             cells = " | ".join(f"{per_class[c]['f']:.2f}" for c in CLASSES)
             out.append(f"| {preset} | {table} | {cells} |")
+    out += ["", "Precision by confidence (`sensitive` detections, 50 ms):", ""]
+    out += ["| Class | Confidence | Detections | Precision |", "|---|---|---|---|"]
+    for c, rows in result.get("reliability", {}).items():
+        out += [f"| {c} | {b} | {n} | {p:.2f} |" for b, n, p in rows]
     return "\n".join(out) + "\n"
 
 
@@ -313,6 +317,7 @@ def main() -> None:
     elif args.tune:
         tune(buffers, refs)
     totals: dict[tuple[str, str, str, float, str], np.ndarray] = {}
+    rated: dict[str, list[tuple[float, bool]]] = {c: [] for c in CLASSES}  # sensitive: conf, hit
     start = time.perf_counter()
     for preset in PRESETS:
         for r in clips:
@@ -321,9 +326,13 @@ def main() -> None:
                 est = np.array([e.time_s for e in events if e.cls == c])
                 for tol in TOLERANCES:
                     counts = np.array(match_counts(refs[r["clip_id"]][c], est, tol))
-                    for subset in (r["subset"], "all"):
+                    for subset in (r["subset"], "all", r["source"]):
                         key = (preset, subset, f"{round(tol * 1000)}", tol, c)
                         totals[key] = totals.get(key, 0) + counts
+                if preset == "sensitive":
+                    hits = {j for _, j in match_events(refs[r["clip_id"]][c], est, 0.05)}
+                    conf = [e.confidence for e in events if e.cls == c]
+                    rated[c] += [(x, j in hits) for j, x in enumerate(conf)]
     runtime = time.perf_counter() - start
     minutes = sum(float(r["duration_s"]) for r in clips) / 60
 
@@ -343,12 +352,18 @@ def main() -> None:
                 f"{subset} @ {ms} ms": {
                     c: rounded(totals[(preset, subset, ms, tol, c)]) for c in CLASSES
                 }
-                for subset in SUBSETS
-                if subset in (args.subset or subset, "all")  # with --subset: it and "all"
+                for subset in [s for s in SUBSETS if s in (args.subset or s, "all")]
+                + sorted({r["source"] for r in clips})
                 for tol in TOLERANCES
                 for ms in [f"{round(tol * 1000)}"]
             }
             for preset in PRESETS
+        },
+        # Precision per confidence bin, over the `sensitive` detections at 50 ms (M2-4).
+        "reliability": {
+            c: reliability(*(np.array(x, dtype=float) for x in zip(*rated[c], strict=True)))
+            for c in CLASSES
+            if rated[c]
         },
     }
     name = "-".join([args.model, args.split, *[args.subset] * bool(args.subset)])
