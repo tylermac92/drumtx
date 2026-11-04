@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from drumtx import models, pipeline, render
+from drumtx import models, pipeline, render, separate
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -99,6 +99,16 @@ def transcribe(
         bool,
         typer.Option("--offline", help="Never access the network; fail if the model is missing."),
     ] = False,
+    separate_drums: Annotated[
+        bool,
+        typer.Option(
+            "--separate/--no-separate",
+            help="Isolate the drums first (recommended for full mixes). Needs drumtx[separation].",
+        ),
+    ] = False,
+    device: Annotated[
+        separate.Device, typer.Option(help="Where --separate runs: cpu, or cuda for an NVIDIA GPU.")
+    ] = "cpu",
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Ignore cached stage outputs and recompute.")
     ] = False,
@@ -122,13 +132,18 @@ def transcribe(
         sensitivity=sensitivity,
         model=model,
         offline=offline,
+        separate=separate_drums,
+        device=device,
         no_cache=no_cache,
         force=force,
     )
 
     def work() -> None:
-        if model != models.BASELINE:
-            models.spec(model)  # an unknown ID fails before any slow work
+        # Fail before any slow work: an unknown or non-detector model, a missing extra.
+        if model != models.BASELINE and models.spec(model).kind != "detector":
+            raise InputError(f"{model} is not a detection model; see `drumtx models list`.")
+        if separate_drums:
+            separate.check_installed()
         render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
         pipeline.run(pipeline.RunContext.create(config))
 

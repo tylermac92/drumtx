@@ -11,7 +11,9 @@ and everything after it, and reuses the cached detection.
 The cache keeps only the newest entry per stage, so it cannot grow without limit.
 """
 
+import dataclasses
 import hashlib
+import io
 import json
 import logging
 from collections.abc import Callable, Sequence
@@ -20,9 +22,12 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from drumtx import detect, ingest, models, render
 from drumtx.detect import Preset
 from drumtx.schema import CLASSES, DrumEvent, event_from_json, event_to_json
+from drumtx.separate import SEPARATOR, Device, isolate_drums
 
 log = logging.getLogger("drumtx")
 CACHE_DIR = ".drumtx-cache"
@@ -40,6 +45,8 @@ class Config:
     sensitivity: Preset = "balanced"
     model: str = models.DEFAULT
     offline: bool = False
+    separate: bool = False
+    device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
 
@@ -50,6 +57,10 @@ class Config:
             return self.model
         presets = hashlib.sha256(detect.MODEL_PRESETS_FILE.read_bytes()).hexdigest()
         return f"{self.model}:{models.spec(self.model).sha256}:{presets}"
+
+    @property
+    def separator_fingerprint(self) -> str:
+        return models.spec(SEPARATOR).sha256
 
 
 @dataclass(frozen=True)
@@ -79,6 +90,7 @@ class Stage:
     version: int = 1  # bump when the stage's output changes for the same inputs
     dump: Callable[[Any], bytes] = field(default=lambda out: json.dumps(out).encode())
     load: Callable[[bytes], Any] = field(default=json.loads)
+    suffix: str = ".json"  # of the cache file
 
 
 def _ingest_summary(ctx: RunContext, audio: ingest.AudioBuffer) -> str:
@@ -109,8 +121,13 @@ def _render(ctx: RunContext, events: list[DrumEvent]) -> list[Path]:
             "start": cfg.start,
             "end": cfg.end,
             "max_duration": cfg.max_duration,
+            "separate": cfg.separate,
         },
-        models={"detector": cfg.model, "beat_tracker": None, "separator": None},
+        models={
+            "detector": cfg.model,
+            "beat_tracker": None,
+            "separator": SEPARATOR if cfg.separate else None,
+        },
         csv_sha256=hashlib.sha256(csv_data).hexdigest(),
     )
     if not events:
@@ -128,6 +145,17 @@ def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:
     return detector.detect(audio, cfg.sensitivity)
 
 
+def _dump_audio(audio: ingest.AudioBuffer) -> bytes:
+    out = io.BytesIO()  # .npz holds plain arrays only: no pickle on load
+    np.savez(out, samples=audio.samples, start_s=audio.start_s, duration=audio.source_duration_s)
+    return out.getvalue()
+
+
+def _load_audio(data: bytes) -> ingest.AudioBuffer:
+    with np.load(io.BytesIO(data), allow_pickle=False) as z:
+        return ingest.AudioBuffer(z["samples"], float(z["start_s"]), float(z["duration"]))
+
+
 STAGES = [
     Stage(
         "ingest",
@@ -137,6 +165,18 @@ STAGES = [
         summary=_ingest_summary,
         params=("start", "end", "max_duration"),
         cached=False,
+    ),
+    # Only with --separate: the drum stem (mono) replaces the mix for detection. Cached, since it
+    # is slow; a 10-minute stem takes about 100 MB.
+    Stage(
+        "separate",
+        run=lambda ctx, audio: isolate_drums(audio, ctx.config.offline, ctx.config.device),
+        summary=lambda ctx, stem: "drum stem",
+        deps=("ingest",),
+        params=("separator_fingerprint",),
+        dump=_dump_audio,
+        load=_load_audio,
+        suffix=".npz",
     ),
     Stage(
         "detect",
@@ -157,8 +197,16 @@ STAGES = [
 ]
 
 
-def run(ctx: RunContext, stages: Sequence[Stage] = STAGES) -> dict[str, Any]:
+def stages_for(config: Config) -> list[Stage]:
+    """STAGES for this run: with --separate, detection reads the drum stem instead of the mix."""
+    if not config.separate:
+        return [s for s in STAGES if s.name != "separate"]
+    return [dataclasses.replace(s, deps=("separate",)) if s.name == "detect" else s for s in STAGES]
+
+
+def run(ctx: RunContext, stages: Sequence[Stage] | None = None) -> dict[str, Any]:
     """Run or load every stage that is needed, and return the outputs by stage name."""
+    stages = stages_for(ctx.config) if stages is None else stages
     keys: dict[str, str] = {}
     for s in stages:
         params = {p: str(getattr(ctx.config, p)) for p in s.params}
@@ -167,7 +215,7 @@ def run(ctx: RunContext, stages: Sequence[Stage] = STAGES) -> dict[str, Any]:
         keys[s.name] = hashlib.sha256(json.dumps(payload).encode()).hexdigest()[:16]
 
     def path(s: Stage) -> Path:
-        return ctx.cache_dir / f"{s.name}-{keys[s.name]}.json"
+        return ctx.cache_dir / f"{s.name}-{keys[s.name]}{s.suffix}"
 
     hit = {s.name: s.cached and not ctx.config.no_cache and path(s).exists() for s in stages}
     runs: set[str] = set()
@@ -189,7 +237,7 @@ def run(ctx: RunContext, stages: Sequence[Stage] = STAGES) -> dict[str, Any]:
                 tmp = path(s).with_suffix(".tmp")  # a crash mid-write leaves no partial entry
                 tmp.write_bytes(s.dump(out[s.name]))
                 tmp.replace(path(s))
-                for old in ctx.cache_dir.glob(f"{s.name}-*.json"):  # keep one entry per stage
+                for old in ctx.cache_dir.glob(f"{s.name}-*{s.suffix}"):  # one entry per stage
                     if old != path(s):
                         old.unlink()
             status = s.summary(ctx, out[s.name])

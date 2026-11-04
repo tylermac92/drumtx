@@ -6,6 +6,7 @@
     uv run python scripts/benchmark.py --tune                   # best baseline thresholds
     uv run python scripts/benchmark.py --model adtof --compare eval/results/baseline-dev.json
     uv run python scripts/benchmark.py --model adtof --tune     # rewrites the model's presets
+    python scripts/benchmark.py --model adtof --subset full-mix --separate  # needs the extra
 
 Writes JSON and a Markdown table (default eval/results/<model>-<split>.json and .md) with the
 commit, model ID, runtime, and P/R/F per preset, subset, tolerance and class. With --compare, every
@@ -34,6 +35,7 @@ from drumtx import detect, features, models
 from drumtx.evaluate import match_counts, scores
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 from drumtx.schema import CLASSES, DrumClass
+from drumtx.separate import isolate_drums
 
 REPO = Path(__file__).resolve().parents[1]
 PRESETS: tuple[detect.Preset, ...] = ("strict", "balanced", "sensitive")
@@ -278,19 +280,29 @@ def main() -> None:
     p.add_argument("--out", type=Path, help="results JSON; .md is written beside it")
     p.add_argument("--compare", type=Path, help="previous results JSON")
     p.add_argument("--margin", type=float, default=0.02, help="F-measure drop that counts")
+    p.add_argument("--subset", choices=SUBSETS[:2], help="only these clips")
+    p.add_argument(
+        "--separate", action="store_true", help="isolate drums first (needs drumtx[separation])"
+    )
     p.add_argument(
         "--tune",
         action="store_true",
         help="first tune thresholds on the dev set: printed for baseline, written for a model",
     )
     args = p.parse_args()
-    if args.tune and args.split != "dev":
-        sys.exit("Thresholds are tuned on the development set only (M2-3).")
+    if args.tune and (args.split != "dev" or args.subset or args.separate):
+        sys.exit("Thresholds are tuned on the whole development set only (M2-3).")
     if args.split == "test" and not args.release:
         sys.exit("The test set is for release evaluation only (M2-7, M7-4); add --release.")
 
     clips = list(csv.DictReader((REPO / "eval" / f"{args.split}.csv").open()))
+    clips = [r for r in clips if args.subset in (None, r["subset"])]
     buffers = {r["clip_id"]: load(args.data / r["audio"], r["audio_sha256"]) for r in clips}
+    separation_s = 0.0
+    if args.separate:
+        start = time.perf_counter()
+        buffers = {k: isolate_drums(b, offline=False, device="cpu") for k, b in buffers.items()}
+        separation_s = time.perf_counter() - start
     refs = {r["clip_id"]: reference(args.data, r["clip_id"]) for r in clips}
     detector = MODELS[args.model](args.data)
     if args.tune and isinstance(detector, detect.ModelDetector):
@@ -322,19 +334,24 @@ def main() -> None:
         "audio_minutes": round(minutes, 2),
         "runtime_s": round(runtime, 1),
         "s_per_audio_minute": round(runtime / minutes / len(PRESETS), 3),
+        "separate": args.separate,
+        "separation_s_per_audio_minute": round(separation_s / minutes, 2),
         "results": {
             preset: {
                 f"{subset} @ {ms} ms": {
                     c: rounded(totals[(preset, subset, ms, tol, c)]) for c in CLASSES
                 }
                 for subset in SUBSETS
+                if subset in (args.subset or subset, "all")  # with --subset: it and "all"
                 for tol in TOLERANCES
                 for ms in [f"{round(tol * 1000)}"]
             }
             for preset in PRESETS
         },
     }
-    out = args.out or REPO / "eval" / "results" / f"{args.model}-{args.split}.json"
+    name = "-".join([args.model, args.split, *[args.subset] * bool(args.subset)])
+    name += "-separate" * args.separate
+    out = args.out or REPO / "eval" / "results" / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     previous = json.loads(args.compare.read_text()) if args.compare else None
     out.write_text(json.dumps(result, indent=2) + "\n")

@@ -18,6 +18,16 @@ dependencies = [
     "typer>=0.12",
 ]
 
+[project.optional-dependencies]
+# --separate (M2-6). PyTorch from PyPI is CPU-only on Windows and macOS; for --device cuda, install
+# a CUDA build of torch (https://pytorch.org/get-started/locally/).
+separation = [
+    "openunmix>=1.3,<1.4",
+    "safetensors>=0.4",
+    "torch>=2.4",
+    "torchaudio>=2.4",
+]
+
 [project.scripts]
 drumtx = "drumtx.cli:app"
 
@@ -40,7 +50,7 @@ select = ["E", "F", "I", "B", "UP"]
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["mido", "jsonschema", "mir_eval", "soundfile", "soxr", "onnxruntime", "madmom.*", "tensorflow", "torch"]
+module = ["mido", "jsonschema", "mir_eval", "soundfile", "soxr", "onnxruntime", "madmom.*", "tensorflow", "torch", "openunmix.*", "safetensors.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
