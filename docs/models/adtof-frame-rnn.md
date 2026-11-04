@@ -1,6 +1,6 @@
 # Model card: ADTOF Frame_RNN (`adtof`)
 
-- **Status:** integrated in M2-1, chunked in M2-2, presets tuned in M2-3, confidence and velocity fitted in M2-4 (2026-11-04). Download on first use (M2-5) and the test-set results (M2-7) are still to come.
+- **Status:** integrated in M2-1, chunked in M2-2, presets tuned in M2-3, confidence and velocity fitted in M2-4, downloaded on first use since M2-5 (2026-11-04). The test-set results (M2-7) are still to come.
 - **Chosen in:** decision 0005.
 
 ## What it is
@@ -88,15 +88,34 @@ Reliability on the development set: precision of the detections in each confiden
 
 The conversion is byte-for-byte reproducible: a fresh run in a new environment gave the same ONNX file as the M0-4 spike.
 
-## Converting
+## Installing (download and conversion)
 
-This downloads the checkpoint (if not already there), checks its SHA-256, and writes the ONNX file to `~/drumtx-data/models/adtof/` (`--model-dir` changes this). It runs in a throwaway environment with TensorFlow and PyTorch (about 1.5 GB, cached by uv). DrumTx itself only needs ONNX Runtime. It takes about a minute plus download time.
+`adtof` is the default model. DrumTx installs it the first time it is needed, or when you run:
 
 ```bash
-uv run --isolated --no-project --python 3.12 --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match --with tensorflow-cpu==2.21.0 --with torch==2.15.0+cpu --with onnx==1.23.2 --with onnxruntime==1.31.1 python scripts/convert_adtof.py
+drumtx models download adtof
 ```
 
-The script checks the port twice and stops if either differs by more than 1e-4:
+The steps (`drumtx.models`):
+1. **Download.** The two checkpoint files come from the pinned ADTOF commit, and each must match its SHA-256 above.
+2. **Convert.** ADTOF publishes only a TensorFlow checkpoint, so DrumTx converts it to ONNX once, with `src/drumtx/convert_adtof.py`. That script runs in a throwaway environment that `uv run --isolated` builds with pinned TensorFlow and PyTorch (about 1.5 GB, kept in uv's cache). This needs [uv](https://docs.astral.sh/uv/) installed; DrumTx itself only needs ONNX Runtime. It takes about a minute plus download time.
+3. **Check and install.** The ONNX file must match its pinned SHA-256 before it moves into the model directory. DrumTx checks it again every time it loads it.
+
+**Model directory:**
+- **Linux:** `~/.cache/drumtx/models`
+- **macOS:** `~/Library/Caches/drumtx/models`
+- **Windows:** `%LOCALAPPDATA%\drumtx\Cache\models`
+
+The `DRUMTX_CACHE_DIR` variable replaces the `…/drumtx` part. `drumtx models list` shows the directory and what is installed.
+
+**Offline and failures:**
+- **`--offline`:** never downloads; it fails with exit code 3 if the model is missing.
+- **Failed checks:** a file that fails its check is rejected with exit code 4. `drumtx models download adtof` replaces it.
+- **`--model baseline`:** needs nothing.
+
+**Reproducibility:** the `Model conversion` CI workflow runs the download on Linux, macOS and Windows whenever the conversion changes. It checks that every OS produces the pinned file.
+
+The conversion script checks the port twice and stops if either differs by more than 1e-4:
 - **PyTorch against a Keras rebuild of the network:** maximum difference 2.7e-7.
 - **ONNX Runtime against PyTorch:** maximum difference 2.5e-7 (M2-2 asks for at most 1e-4).
 
@@ -131,7 +150,7 @@ These are 11 development clips longer than 60 s, at `balanced`. Neither version 
 ```
 
 ```bash
-uv run python scripts/check_features.py compare madmom.npz ~/drumtx-data/models/adtof/frame_rnn_adtof_all_0.onnx
+uv run python scripts/check_features.py compare madmom.npz ~/.cache/drumtx/models/frame_rnn_adtof_all_0.onnx
 ```
 
 ## Development-set results

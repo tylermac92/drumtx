@@ -141,7 +141,7 @@ class BaselineDetector:
 
 
 class ModelDetector:
-    """The ADTOF Frame_RNN model as ONNX, made by scripts/convert_adtof.py."""
+    """The ADTOF Frame_RNN model as ONNX, from `drumtx models download adtof`."""
 
     def __init__(self, path: Path) -> None:
         import onnxruntime as ort

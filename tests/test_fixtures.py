@@ -78,7 +78,7 @@ def test_end_to_end(tmp_path: Path, pattern: mf.Pattern, noisy: bool) -> None:
     """
     start = time.perf_counter()
     wav = mf.write(pattern, tmp_path, **(NOISY if noisy else {}))  # type: ignore[arg-type]
-    config = pipeline.Config(input=wav, out_dir=tmp_path / "out")
+    config = pipeline.Config(input=wav, out_dir=tmp_path / "out", model="baseline")
     events = pipeline.run(pipeline.RunContext.create(config))["detect"]
     pred = ev.Track({c: np.array([e.time_s for e in events if e.cls == c]) for c in CLASSES})
     result = ev.evaluate(pred, ev.load_reference(tmp_path / f"{pattern.name}.mid"), (50,))

@@ -91,7 +91,9 @@ runner = CliRunner()
 
 
 def test_transcribe_progress(audio: Path, tmp_path: Path) -> None:
-    result = runner.invoke(app, ["transcribe", str(audio), "-o", str(tmp_path / "out")])
+    result = runner.invoke(
+        app, ["transcribe", str(audio), "--model", "baseline", "-o", str(tmp_path / "out")]
+    )
     assert result.exit_code == 0, result.output
     assert "[1/3] Ingest     in.wav  0:03, stereo" in result.stderr
     assert "[2/3] Detect     0 events (kick 0, snare 0, hihat 0, tom 0, cymbal 0)" in result.stderr
@@ -100,7 +102,9 @@ def test_transcribe_progress(audio: Path, tmp_path: Path) -> None:
 
 
 def test_transcribe_quiet(audio: Path) -> None:
-    result = runner.invoke(app, ["transcribe", str(audio), "-q", "-o", str(audio.parent)])
+    result = runner.invoke(
+        app, ["transcribe", str(audio), "--model", "baseline", "-q", "-o", str(audio.parent)]
+    )
     # Warnings still show with -q; a run with nothing detected succeeds (exit code 0).
     assert result.exit_code == 0 and result.stderr == "No drum events detected.\n"
 
