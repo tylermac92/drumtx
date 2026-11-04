@@ -25,6 +25,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import mir_eval
 import numpy as np
 import soundfile as sf
 import soxr
@@ -56,9 +57,9 @@ def load(path: Path, sha256: str) -> AudioBuffer:
     return AudioBuffer(y, 0.0, len(y) / SAMPLE_RATE)
 
 
-def reference(data: Path, clip_id: str) -> dict[DrumClass, np.ndarray]:
+def reference(data: Path, clip_id: str, column: str = "time_s") -> dict[DrumClass, np.ndarray]:
     rows = list(csv.DictReader((data / "corpus" / f"{clip_id}.onsets.csv").open()))
-    return {c: np.array([float(r["time_s"]) for r in rows if r["class"] == c]) for c in CLASSES}
+    return {c: np.array([float(r[column]) for r in rows if r["class"] == c]) for c in CLASSES}
 
 
 def rounded(counts: np.ndarray) -> dict[str, float | int]:
@@ -125,14 +126,90 @@ def choose_presets(counts: Counts) -> dict[str, Any]:
     return {"min_gap_s": gap, "thresholds": thresholds}
 
 
+def match_events(ref: np.ndarray, est: np.ndarray, tolerance_s: float) -> list[tuple[int, int]]:
+    """(reference index, estimate index) pairs, as in match_counts."""
+    return mir_eval.util.match_events(ref, est, tolerance_s) if len(ref) and len(est) else []
+
+
+def fit_logistic(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
+    """(b0, b1) maximizing the likelihood of labels y under sigmoid(b0 + b1 x): Newton's method."""
+    xs = np.stack([np.ones_like(x), x], axis=1)
+    w = np.zeros(2)
+    for _ in range(100):
+        p = 1 / (1 + np.exp(-xs @ w))
+        hessian = (xs * (p * (1 - p))[:, None]).T @ xs + 1e-6 * np.eye(2)
+        w += np.linalg.solve(hessian, xs.T @ (y - p))
+    return float(w[0]), float(w[1])
+
+
+def quantile_map(a: np.ndarray, v: np.ndarray) -> dict[str, list[float]]:
+    """Matching quantiles of activations and reference velocities: a monotone mapping that keeps
+    the reference's spread (a regression would squeeze velocities toward the mean)."""
+    q = np.linspace(0, 1, 11)
+    return {
+        "activation": [round(float(x), 4) for x in np.quantile(a, q)],
+        "velocity": [round(float(x), 1) for x in np.quantile(v, q)],
+    }
+
+
+def reliability(conf: np.ndarray, hit: np.ndarray) -> list[tuple[str, int, float]]:
+    """(confidence bin, detections, precision) for bins 0–0.2, …, 0.8–1."""
+    edges = np.linspace(0, 1, 6)
+    idx = np.minimum(np.digitize(conf, edges) - 1, 4)
+    return [
+        (f"{edges[i]:.1f}–{edges[i + 1]:.1f}", int((idx == i).sum()), float(hit[idx == i].mean()))
+        for i in range(5)
+        if (idx == i).any()
+    ]
+
+
+def calibrate(
+    acts: dict[str, dict[DrumClass, np.ndarray]],
+    refs: dict[str, dict[DrumClass, np.ndarray]],
+    velocities: dict[str, dict[DrumClass, np.ndarray]],
+    presets: dict[str, Any],
+) -> None:
+    """Fit confidence and velocity per class from the `sensitive` detections (M2-4).
+
+    Confidence: logistic regression of "matches a reference hit within 50 ms" on the activation's
+    logit, over all clips. Velocity: quantile mapping on matched E-GMD hits, the only source with
+    recorded velocities. Adds both to `presets` and prints the reliability table.
+    """
+    presets["confidence"], presets["velocity"] = {}, {}
+    rows = []
+    for c in detect.MODEL_ORDER:
+        peak, hit, a_vel, v_vel = [], [], [], []
+        for k, a in acts.items():
+            frames = detect.pick_peaks(
+                a[c], presets["thresholds"]["sensitive"][c], presets["min_gap_s"]
+            )
+            pairs = dict(match_events(refs[k][c], frames / detect.FPS, 0.05))
+            matched = {j: i for i, j in pairs.items()}
+            peak += a[c][frames].tolist()
+            hit += [j in matched for j in range(len(frames))]
+            if k in velocities:
+                a_vel += [float(a[c][f]) for j, f in enumerate(frames) if j in matched]
+                v_vel += [velocities[k][c][matched[j]] for j in range(len(frames)) if j in matched]
+        x, y = detect.logit(np.array(peak)), np.array(hit, dtype=float)
+        b0, b1 = fit_logistic(x, y)
+        presets["confidence"][c] = [round(b0, 4), round(b1, 4)]
+        presets["velocity"][c] = quantile_map(np.array(a_vel), np.array(v_vel))
+        conf = 1 / (1 + np.exp(-(b0 + b1 * x)))
+        rows += [(c, *row) for row in reliability(conf, y)]
+    print("| Class | Confidence | Detections | Precision |\n|---|---|---|---|")
+    print("\n".join(f"| {c} | {b} | {n} | {p:.2f} |" for c, b, n, p in rows))
+
+
 def tune_model(
     detector: detect.ModelDetector,
     buffers: dict[str, AudioBuffer],
     refs: dict[str, dict[DrumClass, np.ndarray]],
-    subsets: dict[str, str],
+    clips: list[dict[str, str]],
+    data: Path,
 ) -> None:
     """Tune the model's presets on the development set and write them to its presets file."""
     acts = {k: detector.activations(features.spectrogram(b.mono)) for k, b in buffers.items()}
+    subsets = {r["clip_id"]: r["subset"] for r in clips}
     counts: Counts = {}
     for gap in GAPS:
         for c in CLASSES:
@@ -142,6 +219,12 @@ def tune_model(
                     key = (gap, c, t, subsets[k])
                     counts[key] = counts.get(key, 0) + np.array(match_counts(refs[k][c], est, 0.05))
     presets = choose_presets(counts)
+    velocities = {
+        r["clip_id"]: reference(data, r["clip_id"], "velocity")
+        for r in clips
+        if r["source"] == "E-GMD"
+    }
+    calibrate(acts, refs, velocities, presets)
     detect.MODEL_PRESETS_FILE.write_text(json.dumps(presets, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {detect.MODEL_PRESETS_FILE}:\n{json.dumps(presets, indent=2)}")
 
@@ -211,7 +294,7 @@ def main() -> None:
     refs = {r["clip_id"]: reference(args.data, r["clip_id"]) for r in clips}
     detector = MODELS[args.model](args.data)
     if args.tune and isinstance(detector, detect.ModelDetector):
-        tune_model(detector, buffers, refs, {r["clip_id"]: r["subset"] for r in clips})
+        tune_model(detector, buffers, refs, clips, args.data)
         detector = MODELS[args.model](args.data)  # reload with the new presets
     elif args.tune:
         tune(buffers, refs)

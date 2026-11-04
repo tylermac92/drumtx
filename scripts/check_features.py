@@ -62,6 +62,7 @@ def compare(npz: str, model: str) -> None:
             detect.to_events(
                 detector.activations(x),
                 detector.presets["thresholds"]["balanced"],
+                detector.rate,
                 0.0,
                 detector.presets["min_gap_s"],
             )

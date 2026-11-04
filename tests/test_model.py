@@ -1,4 +1,5 @@
-"""M2-1 to M2-3: ADTOF features, presets, and ModelDetector run on a stand-in ONNX model.
+"""M2-1 to M2-4: ADTOF features, presets, confidence and velocity, and ModelDetector (run on a
+stand-in ONNX model).
 
 The real model is never in the repository (decision 0005); its accuracy is checked by the
 benchmark (eval/results/adtof-dev.json) and its features against madmom (the model card).
@@ -68,6 +69,18 @@ def test_model_detector_maps_outputs_to_classes(tmp_path: Path) -> None:
     events = detect.ModelDetector(tmp_path / "m.onnx").detect(buf)
     assert [(e.time_s, e.cls) for e in events] == [(3.0, "tom")]
     assert 0.5 < events[0].confidence <= 1 and 1 <= events[0].velocity <= 127
+
+
+def test_confidence_and_velocity_rise_with_activation(tmp_path: Path) -> None:
+    """M2-4: confidence in [0, 1] and velocity in 1–127, both non-decreasing in the activation."""
+    stand_in_model(tmp_path / "m.onnx")
+    detector = detect.ModelDetector(tmp_path / "m.onnx")
+    for c in CLASSES:
+        rated = [detector.rate(c, a) for a in np.linspace(0, 1, 201)]
+        conf, vel = (np.array(x) for x in zip(*rated, strict=True))
+        assert ((conf >= 0) & (conf <= 1)).all() and ((vel >= 1) & (vel <= 127)).all()
+        assert (np.diff(conf) >= 0).all() and (np.diff(vel) >= 0).all()
+        assert vel[-1] - vel[0] > 50  # velocities span a real range
 
 
 def test_chunks_are_stitched_without_duplicate_or_missed_peaks(
