@@ -65,6 +65,20 @@ def _run(verbose: bool, work: Callable[[], object]) -> None:
         raise typer.Exit(1) from None
 
 
+def _beats_per_bar(time_signature: str | None) -> int | None:
+    """N from "N/4"; anything else is a usage error (exit code 2)."""
+    if time_signature is None:
+        return None
+    n, _, beat_type = time_signature.partition("/")
+    if beat_type != "4" or not n.isdigit() or not 1 <= int(n) <= 16:
+        typer.echo(
+            f"Error: --time-signature must be N/4 with N from 1 to 16, got {time_signature!r}.",
+            err=True,
+        )
+        raise typer.Exit(2)
+    return int(n)
+
+
 @app.command(help="Full pipeline: audio to score, MIDI, events, and report.")
 def transcribe(
     audio: Annotated[Path, typer.Argument(metavar="INPUT", help="Audio file to transcribe.")],
@@ -89,6 +103,20 @@ def transcribe(
             help="strict misses more hits but adds fewer false ones; sensitive the opposite."
         ),
     ] = "balanced",
+    bpm: Annotated[
+        float | None,
+        typer.Option(help="Tempo, to fix half- or double-time beats.", show_default="estimated"),
+    ] = None,
+    time_signature: Annotated[
+        str | None, typer.Option(help="Meter as N/4, e.g. 3/4.", show_default="4/4")
+    ] = None,
+    first_downbeat: Annotated[
+        float | None,
+        typer.Option(
+            help="Start of bar 1, in seconds from the start of the file.",
+            show_default="estimated",
+        ),
+    ] = None,
     model: Annotated[
         str,
         typer.Option(
@@ -134,11 +162,18 @@ def transcribe(
         offline=offline,
         separate=separate_drums,
         device=device,
+        bpm=bpm,
+        beats_per_bar=_beats_per_bar(time_signature),
+        first_downbeat=first_downbeat,
         no_cache=no_cache,
         force=force,
     )
 
     def work() -> None:
+        if bpm is not None and not 20 <= bpm <= 400:
+            raise InputError(f"--bpm must be between 20 and 400, got {bpm:g}.")
+        if first_downbeat is not None and first_downbeat < 0:
+            raise InputError(f"--first-downbeat must be 0 or more, got {first_downbeat:g}.")
         # Fail before any slow work: an unknown or non-detector model, a missing extra.
         if model != models.BASELINE and models.spec(model).kind != "detector":
             raise InputError(f"{model} is not a detection model; see `drumtx models list`.")

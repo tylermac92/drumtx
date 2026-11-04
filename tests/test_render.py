@@ -45,7 +45,12 @@ def test_outputs(wav: Path, tmp_path: Path) -> None:
         "start_s": 0.5,
         "end_s": None,
     }
-    assert doc["tempo_map"]["beats"] == [] and doc["measure_flags"] == []
+    # conftest's stand-in tracker: beats every 0.5 s from the excerpt start, in file time
+    assert doc["tempo_map"]["beats"][:2] == [
+        {"time_s": 0.5, "measure": 1, "beat": 1},
+        {"time_s": 1.0, "measure": 1, "beat": 2},
+    ]
+    assert doc["models"]["beat_tracker"] == "beat-this-final0" and doc["measure_flags"] == []
     assert all(e["quantized"] is None for e in doc["events"]) and doc["events"]
     # The CSV holds the same events as the JSON, at the same precision.
     rows = read_events_csv(out / "straight16.events.csv")

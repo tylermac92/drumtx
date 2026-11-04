@@ -42,32 +42,36 @@ class Model:
     kind: str = "detector"  # or "separator" (--separate)
 
 
-def _convert_adtof(folder: Path) -> None:
-    uv = shutil.which("uv")
-    if uv is None:
-        raise MissingDependencyError(
-            "Converting the ADTOF model needs uv (https://docs.astral.sh/uv/). Install it, "
-            "then run `drumtx models download adtof`."
+def _uv_convert(script: str, packages: list[str]) -> Callable[[Path], None]:
+    """A converter that runs `script` (next to this file) once, in a throwaway uv environment with
+    pinned `packages`: the heavy frameworks a conversion needs never enter DrumTx's own."""
+
+    def convert(folder: Path) -> None:
+        uv = shutil.which("uv")
+        if uv is None:
+            raise MissingDependencyError(
+                "Converting this model needs uv (https://docs.astral.sh/uv/). Install it, then "
+                "run `drumtx models download` again."
+            )
+        pins = list(packages)
+        index: list[str] = []
+        if sys.platform != "darwin":  # CPU-only builds; macOS has only the plain (CPU) ones
+            pins = [p.replace("tensorflow==", "tensorflow-cpu==") for p in pins]
+            pins = [p + "+cpu" if p.startswith(("torch==", "torchaudio==")) else p for p in pins]
+            index = ["--index", "https://download.pytorch.org/whl/cpu"]
+            index += ["--index-strategy", "unsafe-best-match"]
+        command = [uv, "run", "--isolated", "--no-project", "--python", "3.12", *index]
+        command += [arg for p in pins for arg in ("--with", p)]
+        command += ["python", str(Path(__file__).with_name(script)), "--model-dir", str(folder)]
+        log.info(
+            "Converting the checkpoint to ONNX (once). uv fetches PyTorch and the model's own "
+            "package into its cache for this (up to 1.5 GB); this can take several minutes."
         )
-    index: list[str] = []
-    if sys.platform == "darwin":  # no CPU-only builds for macOS; the plain ones are CPU-only
-        packages = ["tensorflow==2.21.0", "torch==2.15.0"]
-    else:
-        packages = ["tensorflow-cpu==2.21.0", "torch==2.15.0+cpu"]
-        index = ["--index", "https://download.pytorch.org/whl/cpu"]
-        index += ["--index-strategy", "unsafe-best-match"]
-    packages += ["onnx==1.23.2", "onnxruntime==1.31.1"]
-    command = [uv, "run", "--isolated", "--no-project", "--python", "3.12", *index]
-    command += [arg for p in packages for arg in ("--with", p)]
-    command += ["python", str(Path(__file__).with_name("convert_adtof.py"))]
-    command += ["--model-dir", str(folder)]
-    log.info(
-        "Converting the checkpoint to ONNX (once). uv fetches TensorFlow and PyTorch into its "
-        "cache for this, about 1.5 GB; this can take several minutes."
-    )
-    result = subprocess.run(command, capture_output=True, text=True)
-    if result.returncode:
-        raise ProcessingError(f"Converting the ADTOF model failed:\n{result.stderr[-3000:]}")
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode:
+            raise ProcessingError(f"Converting the model failed:\n{result.stderr[-3000:]}")
+
+    return convert
 
 
 def _convert_umxl(folder: Path) -> None:
@@ -103,7 +107,10 @@ REGISTRY = {
         },
         file="frame_rnn_adtof_all_0.onnx",
         sha256="9e2f06a1b3edf1d7943e885ed276c4983d8308bdee39646c0d4da1389c1c7e8d",
-        convert=_convert_adtof,
+        convert=_uv_convert(
+            "convert_adtof.py",
+            ["tensorflow==2.21.0", "torch==2.15.0", "onnx==1.23.2", "onnxruntime==1.31.1"],
+        ),
     ),
     "umxl-drums": Model(
         id="umxl-drums",
@@ -117,6 +124,21 @@ REGISTRY = {
         sha256="8fc45a49f6d0b92221efd4a75bb68b4a65b655d0829d0374d5f7cc7d3fb83e52",
         convert=_convert_umxl,
         kind="separator",
+    ),
+    "beat-this-final0": Model(
+        id="beat-this-final0",
+        version="Beat This! final0",
+        license="MIT",
+        url="https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/",
+        sources={"final0.ckpt": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"},
+        file="beat_this_final0.onnx",
+        sha256="9d04713f5e9764366910825b2617948d945972154f84ac9f92cc9753be94ebda",
+        convert=_uv_convert(
+            "convert_beat_this.py",
+            ["beat-this==1.1.0", "torch==2.15.0", "torchaudio==2.11.1", "onnx==1.23.2"]
+            + ["onnxruntime==1.31.1"],
+        ),
+        kind="beat_tracker",
     ),
 }
 

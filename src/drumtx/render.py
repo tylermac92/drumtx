@@ -4,13 +4,14 @@
 edited after it was written: its SHA-256 at writing time is stored in events.json.
 """
 
+import dataclasses
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from drumtx.errors import InputError
-from drumtx.schema import CSV_COLUMNS, SCHEMA_VERSION, DrumEvent, event_to_json
+from drumtx.schema import CSV_COLUMNS, SCHEMA_VERSION, DrumEvent, TempoMap, event_to_json
 
 
 def event_paths(out_dir: Path, stem: str) -> tuple[Path, Path]:
@@ -55,21 +56,16 @@ def events_json(
     settings: dict[str, Any],
     models: dict[str, str | None],
     csv_sha256: str | None,
+    tempo_map: TempoMap,
 ) -> dict[str, Any]:
-    """A detection-only events.json (schema v1): the tempo map is empty and nothing is quantized."""
+    """events.json (schema v1) with the tempo map; nothing is quantized yet (M3-2)."""
     return {
         "schema_version": SCHEMA_VERSION,
         "source": source,
         "settings": settings,
         "models": models,
         "csv_sha256": csv_sha256,
-        "tempo_map": {
-            "beats": [],
-            "time_signatures": [{"measure": 1, "beats": 4, "beat_type": 4}],
-            "tempo_source": "estimated",
-            "time_signature_source": "default",
-            "first_downbeat_source": "estimated",
-        },
+        "tempo_map": dataclasses.asdict(tempo_map),
         "events": [event_to_json(e) for e in events],
         "measure_flags": [],
     }

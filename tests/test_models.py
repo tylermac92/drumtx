@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import soundfile as sf
+from test_beats import stand_in_tracker
 from test_model import stand_in_model
 from typer.testing import CliRunner
 
@@ -73,9 +74,20 @@ def test_other_formats_are_refused(upstream: models.Model, monkeypatch: pytest.M
         models.get_model("adtof", offline=False)
 
 
-def test_baseline_works_offline_without_any_model(wav: Path) -> None:
+@pytest.mark.real_tracker
+def test_baseline_offline_needs_only_the_beat_tracker(
+    wav: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--model baseline needs no detection model, but beat tracking (M3-1) needs its model."""
+    code, err = transcribe(wav, "--model", "baseline", "--offline")
+    assert code == 3 and "Model beat-this-final0 is not installed" in err
+    stand_in_tracker(tmp_path / "bt.onnx", quiet=1.0, loud=2.0)
+    tracker = replace(models.spec("beat-this-final0"), sha256=sha(tmp_path / "bt.onnx"))
+    monkeypatch.setitem(models.REGISTRY, "beat-this-final0", tracker)
+    models.cache_dir().mkdir(parents=True)
+    (models.cache_dir() / tracker.file).write_bytes((tmp_path / "bt.onnx").read_bytes())
     assert transcribe(wav, "--model", "baseline", "--offline", "-q") == (0, "")
-    assert not models.cache_dir().exists()
+    assert [p.name for p in models.cache_dir().iterdir()] == [tracker.file]  # nothing downloaded
 
 
 def test_offline_without_the_model_exits_3(wav: Path) -> None:

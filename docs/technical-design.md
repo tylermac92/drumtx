@@ -81,7 +81,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 | `--formats LIST` | `musicxml,midi,json,csv,report` | Which outputs to write. |
 | `--separate / --no-separate` | off | Isolate drums first. Needs `drumtx[separation]`. On full mixes it helps kick and toms but costs some snare and cymbal (docs/models/umxl-drums.md). |
 | `--sensitivity` | `balanced` | `strict` misses more hits but adds fewer false ones; `sensitive` does the opposite. |
-| `--bpm FLOAT` | estimated | Constrains the beat tracker to a tempo. |
+| `--bpm FLOAT` | estimated | Corrects half- or double-time beat tracking (whole-number tempo ratios; docs/models/beat-this.md). |
 | `--time-signature N/4` | `4/4` | Meter used for downbeats and barlines. |
 | `--first-downbeat SEC` | estimated | Fixes the start of bar 1 when the estimate is wrong. |
 | `--grid` | `auto` | `16th`, `triplet`, or `auto` (chosen per beat). |
@@ -90,7 +90,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 | `--mark-uncertain` | off | Color low-confidence notes in the MusicXML. |
 | `--midi-timing` | `quantized` | `quantized` (on grid, aligned to audio through the tempo map) or `performance` (raw times). |
 | `--device` | `cpu` | `cpu` or `cuda`, for `--separate` only. Detection always runs on CPU in the MVP. |
-| `--model ID` | registry default | Detection model. `baseline` selects the classical detector, which needs no download. |
+| `--model ID` | registry default | Detection model. `baseline` selects the classical detector, which needs no download (beat tracking still needs its model). |
 | `--offline` | off | Never attempt a network access. Fails if the model is not installed. |
 | `--force` | off | Overwrite existing outputs. Never overwrites an `events.csv` that was edited after it was written (detected by the hash stored in `events.json`); move or rename the edited file first. |
 | `--no-cache` | off | Ignore cached stage outputs and recompute all stages. The cache is in `<out-dir>/.drumtx-cache/` and keeps only the newest entry per stage. |

@@ -111,7 +111,7 @@ The `DRUMTX_CACHE_DIR` variable replaces the `…/drumtx` part. `drumtx models l
 **Offline and failures:**
 - **`--offline`:** never downloads; it fails with exit code 3 if the model is missing.
 - **Failed checks:** a file that fails its check is rejected with exit code 4. `drumtx models download adtof` replaces it.
-- **`--model baseline`:** needs nothing.
+- **`--model baseline`:** needs no detection model. Since M3-1, every run also needs the beat tracker (`beat-this-final0`, docs/models/beat-this.md).
 
 **Reproducibility:** the `Model conversion` CI workflow runs the download on Linux, macOS and Windows whenever the conversion changes. It checks that every OS produces the pinned file.
 

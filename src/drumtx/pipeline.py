@@ -24,12 +24,13 @@ from typing import Any
 
 import numpy as np
 
-from drumtx import detect, ingest, models, render
+from drumtx import beats, detect, ingest, models, render
 from drumtx.detect import Preset
 from drumtx.schema import CLASSES, DrumEvent, event_from_json, event_to_json
 from drumtx.separate import SEPARATOR, Device, isolate_drums
 
 log = logging.getLogger("drumtx")
+TRACKER = "beat-this-final0"
 CACHE_DIR = ".drumtx-cache"
 
 
@@ -46,6 +47,9 @@ class Config:
     model: str = models.DEFAULT
     offline: bool = False
     separate: bool = False
+    bpm: float | None = None
+    beats_per_bar: int | None = None  # --time-signature N/4; None is the 4/4 default
+    first_downbeat: float | None = None
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -57,6 +61,10 @@ class Config:
             return self.model
         presets = hashlib.sha256(detect.MODEL_PRESETS_FILE.read_bytes()).hexdigest()
         return f"{self.model}:{models.spec(self.model).sha256}:{presets}"
+
+    @property
+    def tracker_fingerprint(self) -> str:
+        return models.spec(TRACKER).sha256
 
     @property
     def separator_fingerprint(self) -> str:
@@ -104,8 +112,31 @@ def _detect_summary(ctx: RunContext, events: list[DrumEvent]) -> str:
     return f"{len(events):,} events ({per_class})"
 
 
-def _render(ctx: RunContext, events: list[DrumEvent]) -> list[Path]:
+def track_beats(audio: ingest.AudioBuffer, offline: bool) -> dict[str, list[float]]:
+    """Beats and downbeats in source-file seconds, from the full mix (never the drum stem)."""
+    tracker = beats.BeatTracker(models.get_model(TRACKER, offline))
+    beat_times, downbeat_times = (audio.start_s + t for t in tracker.track(audio.mono))
+    return {"beats": beat_times.round(3).tolist(), "downbeats": downbeat_times.round(3).tolist()}
+
+
+def _track_summary(ctx: RunContext, tracked: dict[str, list[float]]) -> str:
+    b = tracked["beats"]
+    tempo = f", about {60 / float(np.median(np.diff(b))):.0f} BPM" if len(b) > 1 else ""
+    return f"{len(b):,} beats{tempo}"
+
+
+def _render(
+    ctx: RunContext, events: list[DrumEvent], tracked: dict[str, list[float]]
+) -> list[Path]:
     cfg = ctx.config
+    tempo_map = beats.tempo_map(
+        np.array(tracked["beats"]),
+        np.array(tracked["downbeats"]),
+        beats_per_bar=cfg.beats_per_bar or 4,
+        bpm=cfg.bpm,
+        first_downbeat=cfg.first_downbeat,
+        time_signature_given=cfg.beats_per_bar is not None,
+    )
     csv_data = render.events_csv(events)
     doc = render.events_json(
         events,
@@ -122,13 +153,17 @@ def _render(ctx: RunContext, events: list[DrumEvent]) -> list[Path]:
             "end": cfg.end,
             "max_duration": cfg.max_duration,
             "separate": cfg.separate,
+            "bpm": cfg.bpm,
+            "time_signature": f"{cfg.beats_per_bar}/4" if cfg.beats_per_bar else None,
+            "first_downbeat": cfg.first_downbeat,
         },
         models={
             "detector": cfg.model,
-            "beat_tracker": None,
+            "beat_tracker": TRACKER,
             "separator": SEPARATOR if cfg.separate else None,
         },
         csv_sha256=hashlib.sha256(csv_data).hexdigest(),
+        tempo_map=tempo_map,
     )
     if not events:
         log.warning("No drum events detected.")
@@ -187,11 +222,20 @@ STAGES = [
         dump=lambda events: json.dumps([event_to_json(e) for e in events]).encode(),
         load=lambda data: [event_from_json(d) for d in json.loads(data)],
     ),
+    # Raw beats only: the tempo map (with --bpm, --time-signature, --first-downbeat) is built when
+    # rendering, so changing those options never re-runs the network.
+    Stage(
+        "track",
+        run=lambda ctx, audio: track_beats(audio, ctx.config.offline),
+        summary=_track_summary,
+        deps=("ingest",),
+        params=("tracker_fingerprint",),
+    ),
     Stage(
         "render",
         run=_render,
         summary=lambda ctx, paths: ", ".join(p.name for p in paths),
-        deps=("detect",),
+        deps=("detect", "track"),
         cached=False,
     ),
 ]
