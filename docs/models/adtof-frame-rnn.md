@@ -1,6 +1,6 @@
 # Model card: ADTOF Frame_RNN (`adtof`)
 
-- **Status:** integrated in M2-1, chunked in M2-2, presets tuned in M2-3, confidence and velocity fitted in M2-4, downloaded on first use since M2-5 (2026-11-04). The test-set results (M2-7) are still to come.
+- **Status:** integrated in M2-1, chunked in M2-2, presets tuned in M2-3, confidence and velocity fitted in M2-4, downloaded on first use since M2-5, evaluated once on the test set in M2-7 (2026-11-04).
 - **Chosen in:** decision 0005.
 
 ## What it is
@@ -189,7 +189,85 @@ Per-class F-measure, ADTOF / baseline:
 | MDB Drums, full mix | 0.84 | 0.75 | 0.89 | 0.16 (15 hits) | 0.84 |
 | IDMT-SMT-Drums | 0.99 | 0.75 | 0.97 | — | — |
 
+## Test-set results (M2-7)
+
+This is the one-time release evaluation on the frozen test set (decision 0004): 192 clips, 104 minutes (181 drum-only, 11 full mixes). Nothing was tuned on it. The model and its M2-3/M2-4 presets were fixed before the run, at commit `23696ca`. Full results, with every preset and every source, are in `eval/results/adtof-test.json`. The same tables are in `docs/accuracy.md`.
+
+```bash
+uv run python scripts/benchmark.py --split test --release --model adtof
+```
+
+**Precision / recall / F-measure at `balanced`** (the default):
+
+| Subset | Tolerance | Kick | Snare | Hi-hat | Tom | Cymbal |
+|---|---|---|---|---|---|---|
+| Drum-only | 50 ms | 0.87 / 0.75 / **0.81** | 0.74 / 0.68 / **0.71** | 0.83 / 0.70 / **0.76** | 0.68 / 0.67 / **0.68** | 0.86 / 0.85 / **0.85** |
+| Drum-only | 30 ms | 0.80 / 0.69 / **0.74** | 0.63 / 0.57 / **0.60** | 0.75 / 0.63 / **0.69** | 0.55 / 0.54 / **0.55** | 0.84 / 0.83 / **0.83** |
+| Full mix | 50 ms | 0.77 / 0.93 / **0.84** | 0.63 / 0.84 / **0.72** | 0.81 / 0.72 / **0.76** | 0.40 / 0.57 / **0.47** | 0.80 / 0.92 / **0.85** |
+| Full mix | 30 ms | 0.76 / 0.91 / **0.83** | 0.62 / 0.83 / **0.71** | 0.81 / 0.72 / **0.76** | 0.40 / 0.57 / **0.47** | 0.78 / 0.90 / **0.84** |
+| All | 50 ms | 0.86 / 0.76 / **0.81** | 0.73 / 0.69 / **0.71** | 0.83 / 0.70 / **0.76** | 0.67 / 0.67 / **0.67** | 0.84 / 0.86 / **0.85** |
+| All | 30 ms | 0.79 / 0.70 / **0.75** | 0.63 / 0.60 / **0.61** | 0.76 / 0.64 / **0.69** | 0.54 / 0.54 / **0.54** | 0.83 / 0.84 / **0.84** |
+
+Reference hits: drum-only 9,375 / 12,906 / 15,953 / 2,436 / 3,598; full mix 878 / 1,350 / 1,036 / 75 / 735.
+
+**Against the targets** (decision 0010; the formal check is M7-4):
+
+| | Kick | Snare | Hi-hat | Tom | Cymbal |
+|---|---|---|---|---|---|
+| Drum-only, target | 0.85 | 0.85 | 0.75 | 0.60 | 0.60 |
+| Drum-only, test | 0.81 ✗ | 0.71 ✗ | 0.76 ✓ | 0.68 ✓ | 0.85 ✓ |
+| Full mix, target | 0.75 | 0.70 | 0.70 | reported only | 0.50 |
+| Full mix, test | 0.84 ✓ | 0.72 ✓ | 0.76 ✓ | 0.47 | 0.85 ✓ |
+
+**Other presets** (F-measure at 50 ms, drum-only / full mix):
+
+| Preset | Kick | Snare | Hi-hat | Tom | Cymbal |
+|---|---|---|---|---|---|
+| `strict` | 0.76 / 0.85 | 0.69 / 0.76 | 0.73 / 0.77 | 0.59 / 0.53 | 0.84 / 0.85 |
+| `balanced` | 0.81 / 0.84 | 0.71 / 0.72 | 0.76 / 0.76 | 0.68 / 0.47 | 0.85 / 0.85 |
+| `sensitive` | 0.76 / 0.76 | 0.67 / 0.64 | 0.76 / 0.71 | 0.64 / 0.39 | 0.83 / 0.81 |
+
+The presets keep their order on the test set: `strict` has the highest precision and `sensitive` the highest recall for every class, in both subsets.
+
+**By source** (`balanced`, 50 ms, F-measure, with precision / recall):
+
+| Source | Kick | Snare | Hi-hat | Tom | Cymbal |
+|---|---|---|---|---|---|
+| E-GMD (drum-only, 123 clips) | 0.75 (0.83 / 0.69) | 0.69 (0.77 / 0.63) | 0.72 (0.81 / 0.66) | 0.70 (0.72 / 0.67) | 0.87 (0.91 / 0.83) |
+| MDB Drums (drum-only and full mix, 22 clips) | 0.91 (0.86 / 0.96) | 0.77 (0.68 / 0.87) | 0.78 (0.83 / 0.73) | 0.50 (0.42 / 0.61) | 0.85 (0.79 / 0.92) |
+| IDMT-SMT-Drums (47 clips) | 0.99 (0.99 / 0.98) | 0.73 (0.58 / 0.99) | 0.95 (0.96 / 0.94) | — | — |
+
+**Confidence on the test set** (`sensitive` detections, 50 ms): precision per confidence bin.
+
+| Class | 0–0.2 | 0.2–0.4 | 0.4–0.6 | 0.6–0.8 | 0.8–1 |
+|---|---|---|---|---|---|
+| kick | — (1) | 0.12 | 0.28 | 0.52 | 0.88 |
+| snare | 0.13 | 0.21 | 0.33 | 0.58 | 0.87 |
+| hi-hat | 0.33 | 0.32 | 0.38 | 0.61 | 0.87 |
+| tom | 0.16 | 0.31 | 0.62 | 0.87 | 0.93 |
+| cymbal | — | 0.20 | 0.33 | 0.49 | 0.90 |
+
+**How well the confidence holds up:**
+- **It still ranks hits:** higher confidence means higher precision for every class, except hi-hat's two lowest bins, which are level (0.33, 0.32).
+- **It is less well calibrated than on the development set:** kick, snare and cymbal are overconfident in the middle bins (0.4–0.8), and tom is underconfident.
+- **The development-set table was optimistic, as expected (M2-4).**
+
+**With `--separate`** on the 11 full-mix test clips (`eval/results/adtof-test-full-mix-separate.json`), F-measure at 50 ms, without → with:
+
+| Preset | Kick | Snare | Hi-hat | Tom (75 hits) | Cymbal |
+|---|---|---|---|---|---|
+| `balanced` | 0.84 → **0.90** | 0.72 → **0.79** | **0.76** → 0.74 | 0.47 → **0.51** | **0.85** → 0.82 |
+| `strict` | 0.85 → **0.89** | 0.76 → **0.81** | 0.77 → 0.76 | **0.53** → 0.51 | **0.85** → 0.80 |
+| `sensitive` | 0.76 → **0.85** | 0.64 → **0.73** | 0.71 → **0.74** | 0.39 → **0.47** | 0.81 → 0.81 |
+
+- **Separation:** 13.0 s per audio minute on the 4-core sandbox CPU. Detection alone takes 0.67 s.
+- **Unlike the development set, snare improves here.** Kick improves on both sets, and cymbal loses on both. `--separate` stays off by default (Q3).
+
+**Runtime.** 0.67 s per audio minute for features and inference, on the 4-core sandbox.
+
 ## Known failure modes
+
+These are confirmed on the test set unless marked otherwise.
 
 - **Quiet notes are missed.** On E-GMD at `balanced`, precision is 0.87–0.95 for every class except tom, but recall is 0.50–0.71. Recall falls with the note's velocity:
 
@@ -200,8 +278,13 @@ Per-class F-measure, ADTOF / baseline:
   | 80 and above | 0.99 | 0.91 | 0.66 | 0.80 | 0.89 |
 
   Rhythm-game charts, which the model was trained on, mostly leave out ghost notes. E-GMD is most of the development set (by hits), so this pulls down every development-set number. M2-3's lower snare threshold brought back most mid-velocity snare notes (recall 0.27 → 0.75). `sensitive` recovers more, at the cost of precision.
-- **E-GMD hi-hat stays weak even when loud** (recall 0.66), as decision 0005 found: probably pedal and kit-specific hi-hats.
-- **Toms in MDB are mostly false positives** (precision 0.04–0.09 on only 15 reference hits), so those numbers mean little (decision 0004).
+
+  On the test set, E-GMD recall is still only 0.63–0.69 for kick, snare and hi-hat, so drum-only kick and snare miss their targets. A model that hears ghost notes (the fallback below) is the main way to close the gap.
+- **The low snare threshold adds false hits on real kits.** M2-3 chose snare 0.05 for E-GMD's quiet notes. On the test set, snare precision is 0.58 on IDMT and 0.68 on MDB, against 0.99 recall on IDMT, and overall snare F falls from 0.79 (development) to 0.71. This is the trade-off M2-3 flagged; weighting sources equally would choose about 0.07. Re-tune on the development set only, after the M7-1 trial, never on these test numbers.
+- **Timing is looser for snare and toms.** From 50 ms to 30 ms, drum-only F drops by 0.11 for snare and 0.13 for tom, against 0.02 for cymbal. Many of those hits land 30–50 ms from the reference.
+- **E-GMD hi-hat stays weak even when loud** (development recall 0.66; test F 0.72), as decision 0005 found: probably pedal and kit-specific hi-hats.
+- **Toms in full mixes are unreliable:** precision 0.40 on the test set's 75 full-mix tom hits; `--separate` helps a little. On the development set's 15 hits, precision was 0.04–0.09.
+- **Confidence is overconfident in its middle range** on unseen audio (see the table above): treat 0.4–0.8 as "check this".
 
 ## Fallback
 
