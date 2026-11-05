@@ -1,4 +1,5 @@
-"""Output files (Technical Design Document §5). So far: events.json, events.csv and the MIDI file.
+"""Output files (Technical Design Document §5). So far: events.json, events.csv, the MIDI
+file and the MusicXML file.
 
 `transcribe` never overwrites outputs without --force, and never overwrites an events.csv that was
 edited after it was written: its SHA-256 at writing time is stored in events.json.
@@ -21,7 +22,8 @@ def event_paths(out_dir: Path, stem: str) -> tuple[Path, Path]:
 def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
     """Refuse to start a run whose outputs would overwrite files it must not."""
     json_path, csv_path = event_paths(out_dir, stem)
-    existing = [p for p in (json_path, csv_path, out_dir / f"{stem}.mid") if p.exists()]
+    others = (out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml")
+    existing = [p for p in (json_path, csv_path, *others) if p.exists()]
     if existing and not force:
         names = ", ".join(p.name for p in existing)
         raise InputError(f"{names} already exists in {out_dir}. Use --force to overwrite.")
@@ -71,14 +73,15 @@ def events_json(
 
 
 def write_outputs(
-    out_dir: Path, stem: str, csv_data: bytes, doc: dict[str, Any], midi: bytes
+    out_dir: Path, stem: str, csv_data: bytes, doc: dict[str, Any], midi: bytes, musicxml: bytes
 ) -> list[Path]:
-    """Write the MIDI file, the CSV, then the JSON that records the CSV's hash. Each file is
-    replaced atomically."""
+    """Write the MusicXML and MIDI files, the CSV, then the JSON that records the CSV's hash.
+    Each file is replaced atomically."""
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path, csv_path = event_paths(out_dir, stem)
-    midi_path = out_dir / f"{stem}.mid"
+    midi_path, musicxml_path = out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml"
     for path, data in (
+        (musicxml_path, musicxml),
         (midi_path, midi),
         (csv_path, csv_data),
         (json_path, (json.dumps(doc, indent=2) + "\n").encode()),
@@ -86,4 +89,4 @@ def write_outputs(
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_bytes(data)
         tmp.replace(path)
-    return [json_path, csv_path, midi_path]
+    return [json_path, csv_path, midi_path, musicxml_path]

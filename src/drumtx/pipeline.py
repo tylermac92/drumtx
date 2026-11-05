@@ -27,6 +27,7 @@ import numpy as np
 from drumtx import beats, detect, ingest, mapping, models, render, review
 from drumtx.detect import Preset
 from drumtx.midi import MidiTiming, midi_bytes
+from drumtx.musicxml import musicxml_bytes
 from drumtx.quantize import GridOption, quantize
 from drumtx.schema import CLASSES, DrumEvent, QuantizedScore, event_from_json, event_to_json
 from drumtx.separate import SEPARATOR, Device, isolate_drums
@@ -190,9 +191,10 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     )
     if not events:
         log.warning("No drum events detected.")
-    notes = {cls: i.midi_note for cls, i in mapping.load(cfg.mapping).items()}
-    midi = midi_bytes(score, notes, cfg.midi_timing)
-    return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi)
+    instruments = mapping.load(cfg.mapping)
+    midi = midi_bytes(score, {cls: i.midi_note for cls, i in instruments.items()}, cfg.midi_timing)
+    musicxml = musicxml_bytes(score, instruments)
+    return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi, musicxml)
 
 
 def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:

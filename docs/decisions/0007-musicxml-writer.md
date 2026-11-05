@@ -37,12 +37,12 @@ music21 could be made to emit a percussion clef, per-note instruments and MIDI m
 
 ## Golden file
 
-`tests/golden/groove.musicxml` is the custom writer's output, committed as the first golden file for M4-1. `.gitattributes` keeps its line endings byte-exact on Windows.
+The spike's output was committed as `tests/golden/groove.musicxml`. M4-1 replaced it with the writer's own golden files (below); the spike's copy stays in `spikes/m0-6/groove_custom.musicxml`.
 
 ## Caveats
 
-- **MuseScore version.** The check used MuseScore 3.2.3, the version Ubuntu packages, which renders headlessly. Opening `tests/golden/groove.musicxml` once in your own MuseScore 4 is a one-minute manual check worth doing.
-- **Benign import warning.** MuseScore 3 logs `element already exists` at the triplet's first chord, but renders and plays it correctly. M4-1 should look into it.
+- **MuseScore version.** The check used MuseScore 3.2.3, the version Ubuntu packages, which renders headlessly. Opening `tests/golden/triplet.musicxml` once in your own MuseScore 4 is a one-minute manual check worth doing.
+- **Benign import warning.** MuseScore 3 logs `element already exists` at the triplet's first chord, but renders and plays it correctly. Resolved in M4-1, below.
 
 ## Reproducing
 
@@ -59,3 +59,28 @@ xvfb-run -a mscore3 -o groove.png spikes/m0-6/groove_custom.musicxml
 ```bash
 xvfb-run -a mscore3 -o groove.mid spikes/m0-6/groove_custom.musicxml
 ```
+
+## M4-1: the writer (`src/drumtx/musicxml.py`)
+
+The writer follows the spike, with these choices:
+
+- **Measures** run from measure 1 (or 0, when the pickup has hits) to the last measure of the tempo map or of the hits, so the score covers the audio. Proper pickup and trailing measures are M4-4.
+- **One note or rest per grid slot.** Each beat is four 16ths or an 8th-note triplet (with `<time-modification>` and a bracketed `<tuplet>`). A beat with no hits in a voice is a quarter rest; a measure with none, a measure rest. Beams, longer notes and fewer rests are M4-2.
+- **Voice 2 only where it has hits.** Voice 1 always fills the measure.
+- **Instrument IDs are per class** (`P1-kick`), so a mapping that gives two classes the same MIDI note still writes unique IDs.
+- **Tempo:** one `<metronome>` and `<sound tempo>`, the median beat interval rounded to whole BPM. None without a tempo map.
+- **Hits without a position** (fewer than two beats) are left out; the MIDI file still has them.
+
+**Golden files** (`tests/golden/`), from `docs/schema/examples/groove.events.json`:
+
+| File | Case |
+|---|---|
+| `straight.musicxml` | Bar 1 of the groove (16ths), bar 2 empty |
+| `triplet.musicxml` | The whole groove; bar 2 ends with an 8th-note triplet |
+| `empty-measure.musicxml` | Bar 2 of the groove only, so bar 1 is a measure rest |
+
+After a deliberate change, regenerate them with `DRUMTX_UPDATE_GOLDEN=1 uv run pytest tests/test_musicxml.py` and review the diff.
+
+**XSD validation.** `tests/test_musicxml.py` validates every output it writes (golden files, ten random scores with 2–7 beats per bar and a pickup, and a `transcribe` run) against the MusicXML 4.0 XSD, with lxml (a dev dependency). The XSD is not in the repo: `scripts/fetch_musicxml_xsd.py DIR` downloads it from the `v4.0` tag with its SHA-256 checked, and the tests read it from `DRUMTX_MUSICXML_XSD=DIR`. CI does both; elsewhere the tests skip without it.
+
+**MuseScore 3.2.3 check** (2026-11-05). All three golden files render as expected (percussion clef, x noteheads, two voices, the triplet bracket, ♩ = 120). Exported to MIDI, every hit is on channel 10 with the right note: the triplet case gives kick 36 ×5, snare 38 ×4, hi-hat 42 ×17, as in the groove. The `element already exists` lines are benign: MuseScore 3 logs one whenever two notes or rests of the part start on the same tick (a chord, or the two voices), as it records an instrument per tick. Every two-voice drum score triggers it; it does not change the import.
