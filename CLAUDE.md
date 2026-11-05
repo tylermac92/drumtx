@@ -14,16 +14,18 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M3-6, through PR #30.
-- **Next task: M4-1, the MusicXML writer core.** Then M4-2 to M4-5, M5 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M4-1, through PR #32.
+- **In review: M4-2, readability rules.** Then M4-3 to M4-5, M5 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
+- **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
+- **MuseScore 4 check:** open `tests/golden/triplet.musicxml` once in MuseScore 4 (decision 0007).
 - **DAW check for the MIDI file** (M3-4): manual, by the owner. Steps and the place to record the result are in decision 0011.
 - **Review flags:** they flag 67% of development measures with the defaults. M5-4 tunes them (decision 0012 and `review.py`).
 - **Grid accuracy target:** 0.75 over the hits found, now 0.71 (decision 0012). No task is planned for it yet; the cause is mostly downbeat errors.
 - **Nightly CI benchmark:** it converts the beat model on every run, because the model isn't cached.
 
-**What M4-1 builds on:**
+**What the M4 tasks build on:**
 - **Spike and MuseScore check:** decision 0007 (M0-6). The spike's output is `spikes/m0-6/groove_custom.musicxml`.
 - **Mapping:** `drumtx.mapping.load()` returns, per class, the name, MIDI note, `display` (staff step and octave), notehead and voice.
 - **Score data:** `QuantizedScore` comes from `quantize.quantize` plus `review.flag`.
