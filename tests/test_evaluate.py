@@ -142,3 +142,45 @@ def test_cli_input_errors(pair: tuple[Path, Path], tmp_path: Path) -> None:
     assert result.exit_code == 2 and "line 2: unknown class 'cowbell'" in result.stderr
     result = runner.invoke(app, ["evaluate", "--pred", str(ref), "--ref", str(tmp_path / "x.mid")])
     assert result.exit_code == 2 and "Cannot read MIDI file x.mid" in result.stderr
+
+
+SCORE_HEADER = "time_s,class,confidence,velocity,measure,beat,grid,slot"
+
+
+def score_rows(bar_offset: int = 0) -> list[str]:
+    """Places checked by hand against groove.events.json; `bar_offset` shifts every measure."""
+    m1, m2, m5 = (str(m + bar_offset) for m in (1, 2, 5))
+    return [
+        f"0.502,kick,1,100,{m1},1,16th,1",  # right
+        f"1.008,snare,1,100,{m1},2,16th,1",  # right
+        f"4.169,hihat,1,100,{m2},4,triplet,2",  # right
+        f"0.74,hihat,1,100,{m1},1,triplet,2",  # wrong: the prediction is 16th slot 3
+        f"3.996,hihat,1,100,{m2},4,16th,1",  # right: slot 1 is the beat in either grid
+        f"9.0,kick,1,100,{m5},1,16th,1",  # wrong: nothing detected there
+        "2.245,hihat,1,100,,,,",  # not placed in the reference: not scored
+    ]
+
+
+def test_grid_accuracy(tmp_path: Path) -> None:
+    ref = write_csv(tmp_path / "ref.csv", ["0.502,kick,,"])
+    pred = ev.load_prediction(EXAMPLES / "groove.events.json")
+    score = ev.load_score(write_csv(tmp_path / "s.csv", score_rows(), header=SCORE_HEADER))
+    grid = ev.evaluate(pred, ev.load_reference(ref), (50.0,), score)["grid"]
+    assert (grid["placed"], grid["matched"], grid["correct"]) == (6, 5, 4)
+    assert grid["accuracy"] == pytest.approx(4 / 6) and grid["accuracy_matched"] == 0.8
+    shifted = ev.load_score(write_csv(tmp_path / "b.csv", score_rows(1), header=SCORE_HEADER))
+    grid = ev.evaluate(pred, ev.load_reference(ref), (50.0,), shifted)["grid"]
+    assert (grid["placed"], grid["matched"], grid["correct"]) == (6, 5, 0)  # one bar off: all wrong
+
+
+def test_grid_accuracy_cli(tmp_path: Path) -> None:
+    ref = write_csv(tmp_path / "ref.csv", ["0.502,kick,,"])
+    score = write_csv(tmp_path / "s.csv", score_rows(), header=SCORE_HEADER)
+    args = ["evaluate", "--ref", str(ref), "--ref-score", str(score)]
+    result = runner.invoke(app, [*args, "--pred", str(EXAMPLES / "groove.events.json")])
+    assert result.exit_code == 0 and "Grid accuracy: 0.667 (4 of 6 hits)" in result.stdout
+    result = runner.invoke(app, [*args, "--pred", str(EXAMPLES / "groove.events.csv")])
+    assert "Grid accuracy: 0.000" in result.stdout and "no grid positions" in result.stdout
+    bad = write_csv(tmp_path / "bad.csv", ["1.0,kick,1,100,x,1,16th,1"], header=SCORE_HEADER)
+    result = runner.invoke(app, [*args[:4], str(bad), "--pred", str(ref)])
+    assert result.exit_code == 2 and "Cannot read the reference score" in result.stderr

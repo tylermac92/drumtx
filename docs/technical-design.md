@@ -106,6 +106,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 `evaluate` takes `--pred` (an `events.json` or `events.csv`) and `--ref`: a MIDI file (channel 10, General MIDI drum notes) or a CSV in the `events.csv` format. Options:
 - `--ref-beats` adds beat and downbeat F-measure. It takes a `time_s,beat` CSV, where `beat` 1 marks a downbeat.
+- `--ref-score` adds grid accuracy (M3-6). It takes a reference score: the `events.csv` columns plus `measure,beat,grid,slot` (decision 0004). Grid accuracy is the share of the reference's placed hits whose matched prediction (same class, within the first tolerance) has the same measure, beat and slot; slot 1 matches in either grid. Hits the detector missed count as wrong, and the report also gives the accuracy over the hits it found. It needs an `events.json` prediction, which has the positions.
 - `--tolerance-ms` can be repeated; the default is 50 and 30.
 - `--out PREFIX` also writes `PREFIX.json` and `PREFIX.md`.
 

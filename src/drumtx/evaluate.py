@@ -2,8 +2,14 @@
 
 Onsets are matched per class with mir_eval (each reference hit matches at most one predicted hit of
 the same class within the tolerance). Beats and downbeats use mir_eval's beat F-measure (±70 ms).
+
+Grid accuracy (M3-6) is the share of a reference score's placed hits whose matched prediction (same
+class, within the first tolerance) has the same measure, beat and slot. Slot 1 is the beat itself
+in either grid; for other slots the grid must agree too. A reference hit that matches nothing
+counts as wrong; `accuracy_matched` leaves those out.
 """
 
+import csv
 import json
 import warnings
 from collections import Counter
@@ -30,18 +36,39 @@ GM_DRUM_NOTES: dict[int, DrumClass] = {
 }
 
 
+# (measure, beat, grid, slot), with grid "" on slot 1, where both grids agree. None: not placed.
+Place = tuple[int, int, str, int] | None
+
+
+def place(measure: int, beat: int, grid: str, slot: int) -> Place:
+    return (measure, beat, grid if slot != 1 else "", slot)
+
+
 @dataclass
 class Track:
-    """Hits per class, optional beats as (time, position in bar), and what could not be scored."""
+    """Hits per class (sorted), optional beats as (time, position in bar), optional grid places
+    aligned with the hits, and what could not be scored."""
 
     onsets: dict[DrumClass, np.ndarray]
     beats: list[tuple[float, int]] | None = None
     unknown_notes: Counter[int] = field(default_factory=Counter)
     other_channel_notes: int = 0
+    places: dict[DrumClass, list[Place]] | None = None
 
 
 def _from_events(events: list[DrumEvent]) -> dict[DrumClass, np.ndarray]:
     return {c: np.array(sorted(e.time_s for e in events if e.cls == c)) for c in CLASSES}
+
+
+def from_score(events: list[DrumEvent], beats: list[tuple[float, int]] | None) -> Track:
+    """A prediction with its quantized places (a QuantizedScore's events, or events.json's)."""
+    events = sorted(events, key=lambda e: e.time_s)
+    places = {
+        c: [place(q.measure, q.beat, q.grid, q.slot) if (q := e.quantized) else None
+            for e in events if e.cls == c]
+        for c in CLASSES
+    }  # fmt: skip
+    return Track(_from_events(events), beats or None, places=places)
 
 
 def load_prediction(path: Path) -> Track:
@@ -56,7 +83,31 @@ def load_prediction(path: Path) -> Track:
         raise InputError(f"Cannot read {path}: {e.strerror}") from e
     except (ValueError, KeyError, TypeError) as e:
         raise InputError(f"{path.name} is not a DrumTx events.json file ({e!r}).") from e
-    return Track(_from_events(events), beats or None)
+    return from_score(events, beats)
+
+
+def load_score(path: Path) -> Track:
+    """A reference score: events.csv columns plus measure,beat,grid,slot (decision 0004).
+    Rows with those four empty are hits too far from the grid to score."""
+    hits: dict[DrumClass, list[tuple[float, Place]]] = {c: [] for c in CLASSES}
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            for line, r in enumerate(csv.DictReader(f), start=2):
+                cls = r["class"]
+                if cls not in CLASSES:
+                    raise ValueError(f"line {line}: unknown class {cls!r}")
+                at = None
+                if r["measure"]:
+                    at = place(int(r["measure"]), int(r["beat"]), r["grid"], int(r["slot"]))
+                hits[cls].append((float(r["time_s"]), at))
+    except (OSError, KeyError, TypeError, ValueError) as e:
+        raise InputError(f"Cannot read the reference score {path.name}: {e}") from e
+    for c in CLASSES:
+        hits[c].sort(key=lambda h: h[0])
+    return Track(
+        {c: np.array([t for t, _ in h]) for c, h in hits.items()},
+        places={c: [p for _, p in h] for c, h in hits.items()},
+    )
 
 
 def load_reference(path: Path, beats_path: Path | None = None) -> Track:
@@ -120,14 +171,47 @@ def scores(tp: int, fp: int, fn: int) -> dict[str, float | int]:
     }
 
 
+def match_events(ref: np.ndarray, est: np.ndarray, tolerance_s: float) -> list[tuple[int, int]]:
+    """(reference index, estimate index) pairs, one-to-one."""
+    return mir_eval.util.match_events(ref, est, tolerance_s) if len(ref) and len(est) else []
+
+
 def match_counts(ref: np.ndarray, est: np.ndarray, tolerance_s: float) -> tuple[int, int, int]:
     """(true positives, false positives, false negatives) with one-to-one matching."""
-    tp = len(mir_eval.util.match_events(ref, est, tolerance_s)) if len(ref) and len(est) else 0
+    tp = len(match_events(ref, est, tolerance_s))
     return tp, len(est) - tp, len(ref) - tp
 
 
+def grid_counts(pred: Track, score: Track, tolerance_s: float) -> tuple[int, int, int]:
+    """(placed reference hits, of them matched, of them at the same place)."""
+    placed = matched = correct = 0
+    for c in CLASSES:
+        pairs = dict(match_events(score.onsets[c], pred.onsets[c], tolerance_s))
+        for i, at in enumerate((score.places or {})[c]):
+            if at is None:
+                continue
+            placed += 1
+            if i in pairs:
+                matched += 1
+                correct += pred.places is not None and pred.places[c][pairs[i]] == at
+    return placed, matched, correct
+
+
+def grid_scores(placed: int, matched: int, correct: int) -> dict[str, float | int]:
+    return {
+        "placed": placed,
+        "matched": matched,
+        "correct": correct,
+        "accuracy": correct / placed if placed else 0.0,
+        "accuracy_matched": correct / matched if matched else 0.0,
+    }
+
+
 def evaluate(
-    pred: Track, ref: Track, tolerances_ms: tuple[float, ...] = DEFAULT_TOLERANCES_MS
+    pred: Track,
+    ref: Track,
+    tolerances_ms: tuple[float, ...] = DEFAULT_TOLERANCES_MS,
+    score: Track | None = None,
 ) -> dict[str, Any]:
     onsets = []
     for tol in tolerances_ms:
@@ -152,9 +236,18 @@ def evaluate(
                     _times(ref.beats, downbeats=True), _times(est, downbeats=True)
                 ),
             }
+    grid = None
+    if score is not None:
+        grid = {
+            "tolerance_ms": tolerances_ms[0],
+            "pred_has_places": pred.places is not None
+            and any(p is not None for ps in pred.places.values() for p in ps),
+            **grid_scores(*grid_counts(pred, score, tolerances_ms[0] / 1000)),
+        }
     return {
         "onsets": onsets,
         "beats": beats,
+        "grid": grid,
         "not_scored": {
             "unknown_midi_notes": {str(n): k for n, k in sorted(ref.unknown_notes.items())},
             "notes_not_on_channel_10": ref.other_channel_notes,
@@ -187,6 +280,14 @@ def markdown(result: dict[str, Any], pred: Path, ref: Path) -> str:
         out.append(f"- Downbeat F: {b['downbeat_f']:.3f}")
         if not b["pred_has_beats"]:
             out.append("- The prediction has no beats (no tempo map), so both scores are 0.")
+    if (g := result.get("grid")) is not None:
+        out += ["", f"## Grid, ±{g['tolerance_ms']:g} ms", ""]
+        out.append(f"- Grid accuracy: {g['accuracy']:.3f} ({g['correct']} of {g['placed']} hits)")
+        out.append(
+            f"- Of the hits found: {g['accuracy_matched']:.3f} ({g['correct']} of {g['matched']})"
+        )
+        if not g["pred_has_places"]:
+            out.append("- The prediction has no grid positions (an events.csv?), so this is 0.")
     skipped = result["not_scored"]
     if skipped["unknown_midi_notes"] or skipped["notes_not_on_channel_10"]:
         out += ["", "## Not scored", ""]
