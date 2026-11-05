@@ -73,12 +73,12 @@ Storing the measure and beat number of every beat, rather than a single meter, i
 
 | Flag | On events | On measures | Meaning |
 |---|---|---|---|
-| `uncertain` | Yes | Yes | Confidence is below the review threshold, or the measure contains such an event. |
+| `uncertain` | Yes | Yes | Confidence is below the review threshold (0.5 by default), or the measure contains such an event. |
 | `merged` | Yes | Yes | Other hits of the same class in the same slot were merged into this one (the highest confidence wins), or the measure contains such a merge. |
 | `off_grid` | — | Yes | More than one event in the measure has a residual above the threshold (25% of a grid step by default). |
 | `tempo` | — | Yes | The local tempo differs from the median by more than the threshold (8% by default). |
 
-The thresholds are set and tuned in M3-3 and M5.
+The defaults are in `review.Thresholds` (`src/drumtx/review.py`). They are first estimates: with them, 67% of the measures in the development score subset are flagged, so M5-5 tunes them to flag fewer. A measure's tempo is its mean beat length, compared with the median beat length of the piece.
 
 ## `events.csv`
 

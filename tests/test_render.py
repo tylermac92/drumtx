@@ -50,7 +50,7 @@ def test_outputs(wav: Path, tmp_path: Path) -> None:
         {"time_s": 0.5, "measure": 1, "beat": 1},
         {"time_s": 1.0, "measure": 1, "beat": 2},
     ]
-    assert doc["models"]["beat_tracker"] == "beat-this-final0" and doc["measure_flags"] == []
+    assert doc["models"]["beat_tracker"] == "beat-this-final0"
     assert all(e["quantized"] for e in doc["events"]) and doc["events"]
     assert doc["settings"]["grid"] == "auto"
     # The CSV holds every detected hit at the same precision; the JSON leaves out merged ones.

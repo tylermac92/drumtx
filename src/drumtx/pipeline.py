@@ -24,7 +24,7 @@ from typing import Any
 
 import numpy as np
 
-from drumtx import beats, detect, ingest, models, render
+from drumtx import beats, detect, ingest, models, render, review
 from drumtx.detect import Preset
 from drumtx.quantize import GridOption, quantize
 from drumtx.schema import CLASSES, DrumEvent, QuantizedScore, event_from_json, event_to_json
@@ -139,14 +139,17 @@ def _quantize(
         first_downbeat=cfg.first_downbeat,
         time_signature_given=cfg.beats_per_bar is not None,
     )
-    return quantize(events, tempo_map, cfg.grid)
+    return review.flag(quantize(events, tempo_map, cfg.grid))
 
 
 def _quantize_summary(ctx: RunContext, score: QuantizedScore) -> str:
     grids = {(q.measure, q.beat): q.grid for e in score.events if (q := e.quantized)}
     triplets = sum(g == "triplet" for g in grids.values())
     merged = sum("merged" in e.flags for e in score.events)
-    return f"grid {ctx.config.grid}: {triplets} of {len(grids)} beats in triplets, {merged} merged"
+    return (
+        f"grid {ctx.config.grid}: {triplets} of {len(grids)} beats in triplets, {merged} merged; "
+        f"{len(score.measure_flags)} measures flagged for review"
+    )
 
 
 def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> list[Path]:

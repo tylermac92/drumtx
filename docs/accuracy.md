@@ -72,7 +72,7 @@ Separation improves kick and snare on full mixes and costs a little hi-hat and c
 
 Every hit has a confidence from 0 to 1. Higher confidence means a hit is more likely to be real.
 
-On unseen audio, the middle range overstates it: about half of the hits between 0.6 and 0.8 are real for kick, snare and cymbal. Check notes below 0.8 first.
+On unseen audio, the middle range overstates it: about half of the hits between 0.6 and 0.8 are real for kick, snare and cymbal. Check notes below 0.8 first. Hits below 0.5 are flagged `uncertain` in `events.json`.
 
 Velocity is only a rough loud/soft estimate.
 
