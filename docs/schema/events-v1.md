@@ -101,7 +101,7 @@ A spreadsheet set to a locale that writes `,` as the decimal point will break th
 
 ## Instrument mapping
 
-[`src/drumtx/mapping.toml`](../../src/drumtx/mapping.toml) is the default mapping from class to notation and MIDI (Technical Design Document §5). A test checks that it matches the table in §5. Copy it, edit it, and pass the copy with `--mapping` (loading is M3-5). Each class has one table:
+[`src/drumtx/mapping.toml`](../../src/drumtx/mapping.toml) is the default mapping from class to notation and MIDI (Technical Design Document §5). A test checks that it matches the table in §5. To change it, write a TOML file with the tables and keys you want to change and pass it with `--mapping`; anything it leaves out keeps the default, so a copy of the whole file also works. `events.json` records the file name in `settings.mapping`. A bad file stops the run before any work (exit code 2), with every bad class, key or value named, such as `[snare] midi_note must be a whole number from 0 to 127, got 200`. Each class has one table:
 
 | Key | Meaning |
 |---|---|

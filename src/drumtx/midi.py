@@ -21,7 +21,7 @@ import mido
 import numpy as np
 
 from drumtx.quantize import SLOTS, beat_grid
-from drumtx.schema import QuantizedScore
+from drumtx.schema import DrumClass, QuantizedScore
 
 MidiTiming = Literal["quantized", "performance"]
 TICKS_PER_BEAT = 480  # 16ths (120 ticks) and triplets (160) land on whole ticks
@@ -76,7 +76,7 @@ def _track(messages: list[tuple[int, mido.Message | mido.MetaMessage]]) -> mido.
 
 
 def midi_bytes(
-    score: QuantizedScore, notes: Mapping[str, int], timing: MidiTiming = "quantized"
+    score: QuantizedScore, notes: Mapping[DrumClass, int], timing: MidiTiming = "quantized"
 ) -> bytes:
     ticks, tempo, zero, first_bar = _tempo_points(score)
     per_bar = score.tempo_map.time_signatures[0].beats

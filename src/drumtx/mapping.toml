@@ -1,5 +1,6 @@
 # DrumTx default instrument mapping (Technical Design Document §5).
-# Copy this file, edit it, and pass it with --mapping. One table per class:
+# To change it, pass a TOML file with --mapping. It needs only the tables and keys you change,
+# such as:  [kick]  midi_note = 35. One table per class:
 #   name       instrument name in the MusicXML part
 #   midi_note  General MIDI drum note, written on channel 10
 #   display    staff position as step and octave, read as on a treble clef

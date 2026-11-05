@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from drumtx import models, pipeline, render, separate
+from drumtx import mapping, models, pipeline, render, separate
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -126,6 +126,14 @@ def transcribe(
         MidiTiming,
         typer.Option(help="MIDI notes on the grid (quantized) or at their detected times."),
     ] = "quantized",
+    mapping_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--mapping",
+            help="Instrument mapping (TOML): MIDI notes and staff positions per class.",
+            show_default="built-in mapping.toml",
+        ),
+    ] = None,
     model: Annotated[
         str,
         typer.Option(
@@ -176,6 +184,7 @@ def transcribe(
         first_downbeat=first_downbeat,
         grid=grid,
         midi_timing=midi_timing,
+        mapping=mapping_file,
         no_cache=no_cache,
         force=force,
     )
@@ -190,6 +199,7 @@ def transcribe(
             raise InputError(f"{model} is not a detection model; see `drumtx models list`.")
         if separate_drums:
             separate.check_installed()
+        mapping.load(mapping_file)  # a bad mapping fails here, naming each bad key
         render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
         pipeline.run(pipeline.RunContext.create(config))
 
