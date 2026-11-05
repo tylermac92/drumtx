@@ -92,8 +92,8 @@ How well DrumTx finds the beats and places hits on the grid (decision 0012; the 
 | | Drum-only | Full mix |
 |---|---|---|
 | Beats found (F-measure, ±70 ms) | 0.98 | 0.93 |
-| Downbeats found (F-measure, ±70 ms) | 0.87 | 0.86 |
-| Detected hits in the right bar, beat and slot | 0.71 | not measured |
+| Downbeats found (F-measure, ±70 ms) | 0.89 | 0.86 |
+| Detected hits in the right bar, beat and slot | 0.77 | not measured |
 
 - **Wrong bar lines** are the main rhythm error. In about one clip in seven, every bar is shifted by a whole bar or by a beat. If bar 1 looks wrong, pass `--first-downbeat` with the time of the first downbeat. If the tempo looks halved or doubled, pass `--bpm`.
 - **Swing is written as straight 16ths.** A single swung 8th note in a beat stays on the 16th grid, not a triplet.

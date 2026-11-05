@@ -23,7 +23,6 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 - **DAW check for the MIDI file** (M3-4): manual, by the owner. Steps and the place to record the result are in decision 0011.
 - **Review flags:** they flag 67% of development measures with the defaults. M5-4 tunes them (decision 0012 and `review.py`).
 - **Long silences** (M4-4): around a 20 s silence, Beat This! adds spurious half-beats, so bar numbers after it are wrong (decision 0007). No task is planned for it.
-- **Grid accuracy target:** 0.75 over the hits found, now 0.71 (decision 0012). No task is planned for it yet; the cause is mostly downbeat errors.
 - **Nightly CI benchmark:** it converts the beat model on every run, because the model isn't cached.
 
 **What the M4 tasks build on:**

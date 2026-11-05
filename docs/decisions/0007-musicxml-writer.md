@@ -111,6 +111,8 @@ Each case has a fixture test in `tests/test_musicxml.py`. It runs synthesized au
 - the MusicXML against the XSD;
 - every measure's notes against the hits `events.json` numbers into it.
 
+**Development-set benchmark.** The gap filling also restores single skipped beats. Drum-only downbeat F goes from 0.87 to 0.89, and grid accuracy over the hits found from 0.71 to 0.77, above its 0.75 target. Full mix is unchanged. Details and the choice of the 1.75 cutoff are in decision 0012.
+
 **Real data (2026-11-05).** `drummer3_session2_5_rock_100_beat_4-4_43` (E-GMD, development set), with low-level noise (−60 dB) spliced in after 12 s:
 
 | Break | Spurious beats from the tracker | Measure the music resumes in | True measure |

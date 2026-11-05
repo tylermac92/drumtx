@@ -46,12 +46,27 @@ For the release model on the held-out **test** set, checked in M7-4, alongside t
 
 | Measure | Target | Development set now |
 |---|---|---|
-| Downbeat F-measure (±70 ms), drum-only and full mix | ≥ 0.85 each | 0.87 / 0.86 |
-| Grid accuracy over the hits found, drum-only | ≥ 0.75 | 0.71 |
-| Grid accuracy over all placed hits | reported, no target | 0.44 |
+| Downbeat F-measure (±70 ms), drum-only and full mix | ≥ 0.85 each | 0.89 / 0.86 (M4-4) |
+| Grid accuracy over the hits found, drum-only | ≥ 0.75 | 0.77 (M4-4) |
+| Grid accuracy over all placed hits | reported, no target | 0.48 (M4-4) |
 
 **Why these numbers:**
 - **Downbeat F-measure** is set just below the current level, as a guard. A wrong downbeat shifts every bar of the score, and Beat This! is pretrained and not tuned on our development set, so the development-set number should carry over to the test set.
 - **Grid accuracy over the hits found** isolates rhythm. 0.75 asks for a modest improvement over 0.71: in beat tracking and downbeats, or in the triplet rule (the reference-beat check shows 0.89 is reachable with perfect beats).
 - **Grid accuracy over all placed hits** has no target. It is the found-hits accuracy times detection recall, and recall already has targets: the onset targets in decision 0010.
 - **No full-mix grid target:** the test set's full-mix clips have no reference scores either.
+
+## Update: gap filling (M4-4, 2026-11-05)
+
+M4-4 made `beats.tempo_map` fill any tracked interval of 1.75 median beats or more with beats at the median tempo (decision 0007). It was added for silences, but it mostly fixes single skipped beats: one missing beat shifts every later bar line by a beat.
+
+The development-set benchmark (`eval/results/adtof-dev.json`, detection unchanged) moves as follows:
+
+| Subset | Downbeat F | Grid accuracy, all placed hits | Grid accuracy, hits found |
+|---|---|---|---|
+| Drum-only | 0.87 → **0.89** | 0.44 → **0.48** | 0.71 → **0.77** |
+| Full mix | 0.86 → 0.86 | — | — |
+
+- **Grid accuracy over the hits found is now above its 0.75 target.**
+- **Six drum-only clips changed.** In four, a skipped beat (about 2 median beats long) was restored, and downbeat F rose from 0.53–0.60 to 0.99–1.0. One short clip barely changed. One (`latin-venezuelan-joropo_80`) fell from 0.66 to 0.49.
+- **The cutoff.** A first cutoff of 1.5 median beats also split a 1.6-beat interval in `MusicDelta_BebopJazz_MIX` into two beats. That halved its downbeat F (0.56 → 0.28) and pulled the full-mix mean below the margin (0.856 → 0.833). At 1.75 that clip is unchanged.

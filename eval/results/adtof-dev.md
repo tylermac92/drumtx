@@ -1,9 +1,9 @@
 # Benchmark: `adtof` on the dev set
 
-- Commit: `74e5c6186e72e71f2d08264e379357647a93d47a`
+- Commit: `0e38ba9189cea366d639e3d6f0fbc658e2b19e1c`
 - Date: 2026-11-05
 - Clips: 189 (107.4 minutes of audio)
-- Detection runtime: 201.8 s (0.63 s per audio minute, all presets)
+- Detection runtime: 188.7 s (0.58 s per audio minute, all presets)
 
 F-measure per class:
 
@@ -50,9 +50,9 @@ Rhythm (`balanced` detections, tracked beats; beats and downbeats ±70 ms):
 
 | Subset | Clips | Beat F | Downbeat F | Grid accuracy (hits) | Of hits found |
 |---|---|---|---|---|---|
-| drum-only | 55 | 0.98 | 0.87 | 0.44 (34099) | 0.71 |
-| all | 67 | 0.98 | 0.87 | 0.44 (34099) | 0.71 |
-| E-GMD | 43 | 0.99 | 0.84 | 0.44 (34099) | 0.71 |
+| drum-only | 55 | 0.98 | 0.89 | 0.48 (34099) | 0.77 |
+| all | 67 | 0.97 | 0.88 | 0.48 (34099) | 0.77 |
+| E-GMD | 43 | 0.98 | 0.86 | 0.48 (34099) | 0.77 |
 | MDB Drums | 24 | 0.96 | 0.92 | – | – |
 | full-mix | 12 | 0.93 | 0.86 | – | – |
 
