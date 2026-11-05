@@ -134,13 +134,14 @@ def _apply_bpm(beats: np.ndarray, downbeats: np.ndarray, bpm: float) -> np.ndarr
 
 
 def _fill_gaps(beats: np.ndarray) -> np.ndarray:
-    """Beats through stretches where the tracker found none, such as silence: an interval of 1.5
-    median beats or more is split evenly into the nearest whole number of beats. Without this, a
-    long silence would become one beat and the measures after it would be numbered too low."""
+    """Beats through stretches where the tracker found none, such as silence or a skipped beat:
+    an interval of 1.75 median beats or more is split evenly into whole beats (2 up to 2.75, and
+    so on). Without this, a long silence would become one beat and the measures after it would
+    be numbered too low. Shorter long beats (1.6 in a slowing full mix) are kept (M4-4)."""
     if len(beats) < 3:
         return beats
     step = np.diff(beats)
-    n = np.maximum(1, np.round(step / np.median(step))).astype(int)
+    n = np.maximum(1, np.floor(step / np.median(step) + 0.25)).astype(int)
     if (n == 1).all():
         return beats
     parts = [t + d * np.arange(k) / k for t, d, k in zip(beats[:-1], step, n, strict=True)]

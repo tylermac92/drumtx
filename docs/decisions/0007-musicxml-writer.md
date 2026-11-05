@@ -103,7 +103,7 @@ MuseScore is the only supported app (Q4 above). Apps that ignore the `color` att
 |---|---|
 | Hits before the first downbeat | Measure 0: a full measure padded with rests in front, written `implicit="yes"`, so notation apps don't count it and number the next measure 1. It appears only when it has hits. |
 | Audio ends mid-measure | The last measure is padded with rests to full length. |
-| Long silence | Whole-measure rests. The beat tracker finds no beats in a silence, so the tempo map used to turn the whole silence into one beat. All later measures were then numbered too low, in the score, the MIDI file and `events.json`. `beats.tempo_map` now fills any interval of 1.5 median beats or more with beats at the median tempo. A single skipped beat is restored the same way. |
+| Long silence | Whole-measure rests. The beat tracker finds no beats in a silence, so the tempo map used to turn the whole silence into one beat. All later measures were then numbered too low, in the score, the MIDI file and `events.json`. `beats.tempo_map` now fills any interval of 1.75 median beats or more with beats at the median tempo. A single skipped beat is restored the same way. |
 | Very dense passages | Hits finer than the grid are merged by the quantizer (one hit per class per slot), and each slot is one chord per voice. |
 
 Each case has a fixture test in `tests/test_musicxml.py`. It runs synthesized audio through `transcribe`, with a scripted beat tracker for the pickup, the partial measure and the silence, and checks:

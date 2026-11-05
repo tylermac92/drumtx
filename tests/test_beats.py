@@ -108,7 +108,7 @@ def test_gaps_in_the_tracked_beats_are_filled() -> None:
     tm = beats.tempo_map(times, times[::4])
     assert (24.0, 13, 1) in numbered(tm) and len(tm.beats) == 61
     assert np.allclose(np.diff([b.time_s for b in tm.beats]), 0.5)
-    skipped = np.array([0, 0.5, 1.0, 2.0, 2.5, 3.0, 3.65, 4.15])
+    skipped = np.array([0, 0.5, 1.0, 2.0, 2.5, 3.0, 3.8, 4.3])  # 3.0 to 3.8: 1.6 beats, kept
     assert [b.time_s for b in beats.tempo_map(skipped, skipped[:1]).beats] == [
         0,
         0.5,
@@ -117,8 +117,8 @@ def test_gaps_in_the_tracked_beats_are_filled() -> None:
         2.0,
         2.5,
         3.0,
-        3.65,
-        4.15,
+        3.8,
+        4.3,
     ]
 
 
