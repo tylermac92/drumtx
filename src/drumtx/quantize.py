@@ -28,7 +28,7 @@ SLOTS: dict[Grid, int] = {"16th": 4, "triplet": 3}
 TRIPLET_PENALTY = 0.05  # in beats of total snapping error: a duple feel is preferred
 
 
-def _beat_grid(tempo_map: TempoMap, first_s: float, last_s: float) -> tuple[np.ndarray, np.ndarray]:
+def beat_grid(tempo_map: TempoMap, first_s: float, last_s: float) -> tuple[np.ndarray, np.ndarray]:
     """Beat times spanning first_s to past last_s, and each beat's number: measure * beats per bar
     + beat - 1, so measure 0 beat 1 is 0. The end intervals are repeated past the tracked beats."""
     per_bar = tempo_map.time_signatures[0].beats
@@ -66,7 +66,7 @@ def quantize(
         log.warning("Fewer than two beats were found, so the hits are not placed on a grid.")
         return QuantizedScore(tempo_map, tuple(events))
     per_bar = tempo_map.time_signatures[0].beats
-    beat_s, number = _beat_grid(tempo_map, events[0].time_s, events[-1].time_s)
+    beat_s, number = beat_grid(tempo_map, events[0].time_s, events[-1].time_s)
     dropped = 0
     while True:
         t = np.array([e.time_s for e in events])

@@ -1,4 +1,4 @@
-"""Output files (Technical Design Document §5). So far: events.json and events.csv.
+"""Output files (Technical Design Document §5). So far: events.json, events.csv and the MIDI file.
 
 `transcribe` never overwrites outputs without --force, and never overwrites an events.csv that was
 edited after it was written: its SHA-256 at writing time is stored in events.json.
@@ -21,7 +21,7 @@ def event_paths(out_dir: Path, stem: str) -> tuple[Path, Path]:
 def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
     """Refuse to start a run whose outputs would overwrite files it must not."""
     json_path, csv_path = event_paths(out_dir, stem)
-    existing = [p for p in (json_path, csv_path) if p.exists()]
+    existing = [p for p in (json_path, csv_path, out_dir / f"{stem}.mid") if p.exists()]
     if existing and not force:
         names = ", ".join(p.name for p in existing)
         raise InputError(f"{names} already exists in {out_dir}. Use --force to overwrite.")
@@ -70,15 +70,20 @@ def events_json(
     }
 
 
-def write_events(out_dir: Path, stem: str, csv_data: bytes, doc: dict[str, Any]) -> list[Path]:
-    """Write the CSV, then the JSON that records its hash. Each file is replaced atomically."""
+def write_outputs(
+    out_dir: Path, stem: str, csv_data: bytes, doc: dict[str, Any], midi: bytes
+) -> list[Path]:
+    """Write the MIDI file, the CSV, then the JSON that records the CSV's hash. Each file is
+    replaced atomically."""
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path, csv_path = event_paths(out_dir, stem)
+    midi_path = out_dir / f"{stem}.mid"
     for path, data in (
+        (midi_path, midi),
         (csv_path, csv_data),
         (json_path, (json.dumps(doc, indent=2) + "\n").encode()),
     ):
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_bytes(data)
         tmp.replace(path)
-    return [json_path, csv_path]
+    return [json_path, csv_path, midi_path]
