@@ -78,7 +78,7 @@ Storing the measure and beat number of every beat, rather than a single meter, i
 | `off_grid` | — | Yes | More than one event in the measure has a residual above the threshold (25% of a grid step by default). |
 | `tempo` | — | Yes | The local tempo differs from the median by more than the threshold (8% by default). |
 
-The defaults are in `review.Thresholds` (`src/drumtx/review.py`). They are first estimates: with them, 67% of the measures in the development score subset are flagged, so M5-5 tunes them to flag fewer. A measure's tempo is its mean beat length, compared with the median beat length of the piece.
+The defaults are in `review.Thresholds` (`src/drumtx/review.py`). They are first estimates: with them, 67% of the measures in the development score subset are flagged, so M5-4 tunes them to flag fewer. A measure's tempo is its mean beat length, compared with the median beat length of the piece.
 
 ## `events.csv`
 
