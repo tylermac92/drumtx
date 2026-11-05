@@ -250,12 +250,12 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - Implemented in `src/drumtx/quantize.py` (M3-2). The triplet penalty is 0.05 beats of total snapping error; on the development score subset with the reference beats, 88–90% of found hits get the reference position for any penalty from 0 to 0.1. Most of the rest are single swung 8th notes, which stay on 16ths (swing is post-MVP).
 6. **Render.** MusicXML, MIDI and JSON are written from the quantized score. The CSV is written from the full event list, so merged hits can be restored by editing it.
 7. **Report.** Measures are flagged when:
-   - they contain uncertain events (confidence below the review threshold);
+   - they contain uncertain events (confidence below the review threshold, 0.5);
    - they contain more than one event with a residual above 25% of the grid step;
    - the local tempo deviates more than 8% from the median;
    - a collision merge happened in them.
 
-   The flag thresholds are configurable and tuned in M5.
+   The flag thresholds are configurable (`review.Thresholds`, M3-3) and tuned in M5. The flags are computed with the quantized score, so they are in `events.json` as well as the report. With the defaults, 67% of development measures are flagged (uncertain 40%, off-grid 42%, merged 15%, tempo 1%), too many to guide a review; M5-5 tunes them.
 
 `drumtx render` re-enters this flow at step 5, using a provided JSON or CSV file. An edited CSV has no tempo map, so `render` takes the tempo map from the sibling JSON file (`<name>.events.json`), adjusted by `--first-downbeat` or `--time-signature` when given. `render` then rewrites `events.json` as described in §4.
 
