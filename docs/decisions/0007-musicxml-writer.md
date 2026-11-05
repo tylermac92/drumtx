@@ -122,3 +122,9 @@ Each case has a fixture test in `tests/test_musicxml.py`. It runs synthesized au
 | 20 s | 31 | 20 | ≈ 14.1 |
 
 Without the gap filling, the 4 s and 8 s breaks would each have been a single beat, and every later measure number would have been about 1.5 and 3 bars too low. With a 20 s break, Beat This! itself goes wrong: it adds a second beat about 0.12 s after most beats, from 1.8 s on, well before the break, because it looks at about 30 s of audio at once. Measure numbers there are wrong with or without filling. This is logged in `docs/accuracy.md`; the workaround is to transcribe each side of the silence separately. The 8 s version, with a pickup, was rendered in MuseScore 3.2.3: its own measure numbers (4 and 10 at the system starts) match `events.json`, and the break shows as measure rests.
+
+## M4-5: compatibility check
+
+`scripts/check_musescore.py` transcribes every development-set clip and converts the MusicXML with MuseScore 3.2.3's command line. A file passes only if MuseScore prints no message other than its progress lines and `element already exists`, and its MIDI export has one channel-10 note per note of the score. MuseScore exits 0 and prints "success!" even for overfull measures, invalid elements and truncated files, so its exit code is not used. The Benchmark workflow runs the check nightly and on demand.
+
+First run (2026-11-05): **159 of 159** files pass; 30 clips are under 2 s and have no output. Results and manual checks are in `docs/compatibility.md`.
