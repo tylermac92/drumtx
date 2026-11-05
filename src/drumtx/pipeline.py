@@ -24,8 +24,9 @@ from typing import Any
 
 import numpy as np
 
-from drumtx import beats, detect, ingest, models, render, review
+from drumtx import beats, detect, ingest, mapping, models, render, review
 from drumtx.detect import Preset
+from drumtx.midi import MidiTiming, midi_bytes
 from drumtx.quantize import GridOption, quantize
 from drumtx.schema import CLASSES, DrumEvent, QuantizedScore, event_from_json, event_to_json
 from drumtx.separate import SEPARATOR, Device, isolate_drums
@@ -52,6 +53,7 @@ class Config:
     beats_per_bar: int | None = None  # --time-signature N/4; None is the 4/4 default
     first_downbeat: float | None = None
     grid: GridOption = "auto"
+    midi_timing: MidiTiming = "quantized"
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -175,6 +177,7 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
             "time_signature": f"{cfg.beats_per_bar}/4" if cfg.beats_per_bar else None,
             "first_downbeat": cfg.first_downbeat,
             "grid": cfg.grid,
+            "midi_timing": cfg.midi_timing,
         },
         models={
             "detector": cfg.model,
@@ -185,7 +188,9 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     )
     if not events:
         log.warning("No drum events detected.")
-    return render.write_events(cfg.out_dir, cfg.input.stem, csv_data, doc)
+    notes = {cls: table["midi_note"] for cls, table in mapping.load().items()}
+    midi = midi_bytes(score, notes, cfg.midi_timing)
+    return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi)
 
 
 def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:

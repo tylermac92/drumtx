@@ -13,6 +13,7 @@ from drumtx import models, pipeline, render, separate
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
+from drumtx.midi import MidiTiming
 from drumtx.quantize import GridOption
 
 log = logging.getLogger("drumtx")
@@ -121,6 +122,10 @@ def transcribe(
     grid: Annotated[
         GridOption, typer.Option(help="Note grid: 16th, triplet, or auto (chosen per beat).")
     ] = "auto",
+    midi_timing: Annotated[
+        MidiTiming,
+        typer.Option(help="MIDI notes on the grid (quantized) or at their detected times."),
+    ] = "quantized",
     model: Annotated[
         str,
         typer.Option(
@@ -170,6 +175,7 @@ def transcribe(
         beats_per_bar=_beats_per_bar(time_signature),
         first_downbeat=first_downbeat,
         grid=grid,
+        midi_timing=midi_timing,
         no_cache=no_cache,
         force=force,
     )

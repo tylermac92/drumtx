@@ -165,10 +165,10 @@ def placed_fixture(tmp_path: Path, p: mf.Pattern, monkeypatch: pytest.MonkeyPatc
     )
     wav = mf.write(p, tmp_path)
     result = runner.invoke(
-        app, ["transcribe", str(wav), "-o", str(tmp_path), "-q", "--model", "baseline"]
+        app, ["transcribe", str(wav), "-o", str(tmp_path / "out"), "-q", "--model", "baseline"]
     )
     assert result.exit_code == 0, result.stderr
-    return json.loads((tmp_path / f"{p.name}.events.json").read_text())["events"]  # type: ignore[no-any-return]
+    return json.loads((tmp_path / "out" / f"{p.name}.events.json").read_text())["events"]  # type: ignore[no-any-return]
 
 
 @pytest.mark.parametrize("name", ["straight16", "triplets"])
