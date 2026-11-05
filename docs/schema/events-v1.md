@@ -73,7 +73,7 @@ Storing the measure and beat number of every beat, rather than a single meter, i
 
 | Flag | On events | On measures | Meaning |
 |---|---|---|---|
-| `uncertain` | Yes | Yes | Confidence is below the review threshold (0.5 by default), or the measure contains such an event. |
+| `uncertain` | Yes | Yes | Confidence is below the review threshold (0.5 by default), or the measure contains such an event. With `--mark-uncertain`, these notes are red in the MusicXML. |
 | `merged` | Yes | Yes | Other hits of the same class in the same slot were merged into this one (the highest confidence wins), or the measure contains such a merge. |
 | `off_grid` | — | Yes | More than one event in the measure has a residual above the threshold (25% of a grid step by default). |
 | `tempo` | — | Yes | The local tempo differs from the median by more than the threshold (8% by default). |

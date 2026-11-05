@@ -126,6 +126,12 @@ def transcribe(
         MidiTiming,
         typer.Option(help="MIDI notes on the grid (quantized) or at their detected times."),
     ] = "quantized",
+    mark_uncertain: Annotated[
+        bool,
+        typer.Option(
+            "--mark-uncertain", help="Color notes below the review confidence threshold in red."
+        ),
+    ] = False,
     mapping_file: Annotated[
         Path | None,
         typer.Option(
@@ -185,6 +191,7 @@ def transcribe(
         grid=grid,
         midi_timing=midi_timing,
         mapping=mapping_file,
+        mark_uncertain=mark_uncertain,
         no_cache=no_cache,
         force=force,
     )
