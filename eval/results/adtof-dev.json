@@ -1,39 +1,39 @@
 {
   "model": "adtof",
   "split": "dev",
-  "commit": "74e5c6186e72e71f2d08264e379357647a93d47a",
+  "commit": "0e38ba9189cea366d639e3d6f0fbc658e2b19e1c",
   "date": "2026-11-05",
   "clips": 189,
   "audio_minutes": 107.44,
-  "runtime_s": 201.8,
-  "s_per_audio_minute": 0.626,
+  "runtime_s": 188.7,
+  "s_per_audio_minute": 0.585,
   "separate": false,
   "separation_s_per_audio_minute": 0.0,
-  "rhythm_runtime_s": 297.9,
+  "rhythm_runtime_s": 277.8,
   "rhythm": {
     "drum-only": {
       "clips": 55,
-      "beat_f": 0.985,
-      "downbeat_f": 0.868,
+      "beat_f": 0.984,
+      "downbeat_f": 0.889,
       "grid_hits": 34099,
-      "grid_accuracy": 0.443,
-      "grid_accuracy_matched": 0.707
+      "grid_accuracy": 0.483,
+      "grid_accuracy_matched": 0.771
     },
     "all": {
       "clips": 67,
-      "beat_f": 0.976,
-      "downbeat_f": 0.866,
+      "beat_f": 0.975,
+      "downbeat_f": 0.883,
       "grid_hits": 34099,
-      "grid_accuracy": 0.443,
-      "grid_accuracy_matched": 0.707
+      "grid_accuracy": 0.483,
+      "grid_accuracy_matched": 0.771
     },
     "E-GMD": {
       "clips": 43,
-      "beat_f": 0.986,
-      "downbeat_f": 0.838,
+      "beat_f": 0.983,
+      "downbeat_f": 0.865,
       "grid_hits": 34099,
-      "grid_accuracy": 0.443,
-      "grid_accuracy_matched": 0.707
+      "grid_accuracy": 0.483,
+      "grid_accuracy_matched": 0.771
     },
     "MDB Drums": {
       "clips": 24,

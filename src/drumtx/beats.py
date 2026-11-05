@@ -133,6 +133,21 @@ def _apply_bpm(beats: np.ndarray, downbeats: np.ndarray, bpm: float) -> np.ndarr
     return kept
 
 
+def _fill_gaps(beats: np.ndarray) -> np.ndarray:
+    """Beats through stretches where the tracker found none, such as silence or a skipped beat:
+    an interval of 1.75 median beats or more is split evenly into whole beats (2 up to 2.75, and
+    so on). Without this, a long silence would become one beat and the measures after it would
+    be numbered too low. Shorter long beats (1.6 in a slowing full mix) are kept (M4-4)."""
+    if len(beats) < 3:
+        return beats
+    step = np.diff(beats)
+    n = np.maximum(1, np.floor(step / np.median(step) + 0.25)).astype(int)
+    if (n == 1).all():
+        return beats
+    parts = [t + d * np.arange(k) / k for t, d, k in zip(beats[:-1], step, n, strict=True)]
+    return np.append(np.concatenate(parts), beats[-1])
+
+
 def tempo_map(
     beats: np.ndarray,
     downbeats: np.ndarray,
@@ -147,7 +162,9 @@ def tempo_map(
     - Beats before bar 1 form a pickup, measure 0. With `first_downbeat` more than one bar into
       the audio, earlier beats cannot be numbered (measures start at 0) and are left out.
     - `bpm` corrects half- and double-tempo tracking (and other whole-number ratios).
+    - Gaps in the tracked beats (silence) are filled at the median tempo, see `_fill_gaps`.
     """
+    beats = _fill_gaps(beats)
     tempo_source: Literal["estimated", "user"] = "estimated"
     if bpm is not None and len(beats) > 1:
         fixed = _apply_bpm(beats, downbeats, bpm)

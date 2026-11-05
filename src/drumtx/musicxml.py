@@ -1,8 +1,11 @@
 """The MusicXML writer (Technical Design Document §5; M4-1; decision 0007): MusicXML 4.0, one
 percussion part on a five-line staff.
 
-- Measures run from measure 1 (or 0, when the pickup has hits) to the last measure of the tempo
-  map or of the hits. One time signature, and one tempo marking: the median tempo.
+- Measures run from measure 1 to the last measure of the tempo map or of the hits, numbered as in
+  events.json (M4-4). Hits before the first downbeat go in a pickup, measure 0: a full measure,
+  padded with rests, marked implicit so notation apps number the next measure 1. A partial last
+  measure is padded with rests too; silences are measure rests. One time signature, and one
+  tempo marking: the median tempo.
 - Readability (M4-2; checklist in docs/notation-checklist.md): within each beat and voice, a rest
   runs up to the first hit and each hit lasts until the next one or the end of the beat. Notes
   shorter than a quarter are beamed per beat, with a second beam or hook for 16ths. A triplet beat
@@ -174,7 +177,9 @@ def musicxml_bytes(
         _sub(mi, "midi-unpitched", instruments[cls].midi_note + 1)  # numbered from 1
     part = _sub(root, "part", id="P1")
     for number in range(first, last + 1):
-        m = _sub(part, "measure", number=str(number))
+        m = _sub(
+            part, "measure", number=str(number), **({"implicit": "yes"} if number == 0 else {})
+        )
         if number == first:
             attrs = _sub(m, "attributes")
             _sub(attrs, "divisions", DIVISIONS)

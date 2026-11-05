@@ -1,19 +1,21 @@
-"""M4-1: the MusicXML writer. Every output is checked against the MusicXML 4.0 XSD, which
+"""M4-1 to M4-4: the MusicXML writer. Every output is checked against the MusicXML 4.0 XSD, which
 scripts/fetch_musicxml_xsd.py downloads; without it these checks skip, except in CI."""
 
 import json
 import os
 import xml.etree.ElementTree as ET
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 import soundfile as sf
+from jsonschema import Draft202012Validator
 from lxml import etree
 from typer.testing import CliRunner
 
-from drumtx import mapping, review
+from drumtx import mapping, pipeline, review
 from drumtx.beats import tempo_map
 from drumtx.cli import app
 from drumtx.ingest import SAMPLE_RATE
@@ -30,6 +32,7 @@ from drumtx.quantize import quantize
 from drumtx.schema import (
     CLASSES,
     Beat,
+    DrumClass,
     DrumEvent,
     QuantizedScore,
     TempoMap,
@@ -41,6 +44,7 @@ from drumtx.synth import render
 GOLDEN = Path(__file__).parent / "golden"
 EXAMPLE = Path(__file__).parents[1] / "docs" / "schema" / "examples" / "groove.events.json"
 INSTRUMENTS = mapping.load()
+EVENTS_SCHEMA = Path(__file__).parents[1] / "src" / "drumtx" / "events-v1.schema.json"
 SNARE = DrumEvent(1.0, "snare", 0.9, 100)
 
 
@@ -162,13 +166,96 @@ def test_without_a_tempo_map(xsd: Any) -> None:
     assert root.find(".//rest").get("measure") == "yes"  # type: ignore[union-attr]
 
 
-def test_pickup_hits_get_measure_0(xsd: Any) -> None:
-    t = 1.0 + np.arange(12) * 0.5
-    tm = tempo_map(t, t[2::4])  # beats 1–2 are a pickup, measure 0
-    score = quantize([DrumEvent(1.5, "snare", 0.9, 100), DrumEvent(2.0, "kick", 0.9, 100)], tm)
-    assert [e.quantized.measure for e in score.events if e.quantized] == [0, 1]
-    root = check(xsd, musicxml_bytes(score, INSTRUMENTS))
-    assert [m.get("number") for m in root.iter("measure")] == ["0", "1", "2", "3"]
+def transcribe_case(
+    xsd: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    hits: list[tuple[float, DrumClass, int]],
+    duration: float,
+    beats: np.ndarray | None = None,
+    downbeats: np.ndarray | None = None,
+) -> tuple[ET.Element, dict[str, Any]]:
+    """M4-4 fixture: synthesized hits through `transcribe`, with these tracked beats (or the
+    conftest stand-in). events.json matches its schema, the MusicXML the XSD, and every measure
+    of the score holds the hits events.json numbers into it."""
+    if beats is not None:
+        tracked = {
+            "beats": beats.tolist(),
+            "downbeats": (downbeats if downbeats is not None else beats[::4]).tolist(),
+        }
+        monkeypatch.setattr(pipeline, "track_beats", lambda audio, offline: tracked)
+    wav, out = tmp_path / "in.wav", tmp_path / "out"
+    sf.write(wav, render(hits, duration), SAMPLE_RATE)
+    args = ["transcribe", str(wav), "-o", str(out), "-q", "--model", "baseline"]
+    assert CliRunner().invoke(app, args).exit_code == 0
+    doc = json.loads((out / "in.events.json").read_text())
+    Draft202012Validator(json.loads(EVENTS_SCHEMA.read_text())).validate(doc)
+    root = check(xsd, (out / "in.musicxml").read_bytes())
+    want = Counter(str(e["quantized"]["measure"]) for e in doc["events"])
+    got = {m.get("number"): len(m.findall(".//unpitched")) for m in root.iter("measure")}
+    assert {k: v for k, v in got.items() if v} == want
+    numbers = [int(n or "") for n in got]
+    assert numbers == list(range(numbers[0], numbers[-1] + 1)) and numbers[0] in (0, 1)
+    assert {f["measure"] for f in doc["measure_flags"]} <= set(numbers)
+    return root, doc
+
+
+def test_pickup_measure(xsd: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Audio before the first downbeat: measure 0, full length, padded with rests in front and
+    marked implicit, so notation apps number the next measure 1, as events.json does."""
+    beats = np.arange(8) * 0.5
+    hits: list[tuple[float, DrumClass, int]] = [(0.5, "snare", 100), (1.0, "kick", 100)]
+    root, _ = transcribe_case(xsd, tmp_path, monkeypatch, hits, 4.0, beats, beats[2::4])
+    first, second = root.findall(".//measure")[:2]
+    assert (first.get("number"), first.get("implicit"), second.get("implicit")) == (
+        "0",
+        "yes",
+        None,
+    )
+    voice1 = [(n.find("rest") is not None, n.findtext("type")) for n in first.iter("note")]
+    assert voice1[:2] == [(True, "half"), (True, "quarter")]  # beats 1–3 padded; snare on 4
+
+
+def test_trailing_partial_measure(
+    xsd: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The audio ends on beat 2 of measure 3: that measure is padded with rests to full length."""
+    beats = np.arange(10) * 0.5
+    hits: list[tuple[float, DrumClass, int]] = [(0.0, "kick", 100), (4.0, "kick", 100)]
+    root, _ = transcribe_case(xsd, tmp_path, monkeypatch, hits, 4.7, beats)
+    last = root.findall(".//measure")[-1]
+    assert last.get("number") == "3"
+    assert "F" in [n.text for n in last.iter("display-step")]  # the kick at 4.0 s
+
+
+def test_long_silence(xsd: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """20 s of silence where the tracker finds no beats: the bars run on through it as measure
+    rests, so the music after it starts in the right measure (13 at 2 s per bar)."""
+    beats = np.concatenate([np.arange(9) * 0.5, 24 + np.arange(13) * 0.5])
+    hits: list[tuple[float, DrumClass, int]] = [
+        (t, "kick", 100) for t in (0.0, 1.0, 2.0, 3.0, 24.0, 25.0, 26.0)
+    ]
+    root, doc = transcribe_case(xsd, tmp_path, monkeypatch, hits, 30.0, beats)
+    assert {(round(e["time_s"]), e["quantized"]["measure"]) for e in doc["events"]} >= {(24, 13)}
+    silent = [m for m in root.iter("measure") if 3 <= int(m.get("number") or "") <= 12]
+    assert len(silent) == 10
+    assert all([r.get("measure") for r in m.iter("rest")] == ["yes"] for m in silent)
+
+
+def test_dense_passage(xsd: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """32nd-note snare under 16th hi-hats, kick and toms on every beat, cymbals on the bar: hits
+    finer than the grid are merged, and every slot is one chord per voice."""
+    hits: list[tuple[float, DrumClass, int]] = [(t, "snare", 90) for t in np.arange(32) * 0.0625]
+    hits += [(t, "hihat", 90) for t in np.arange(16) * 0.125]
+    hits += [(t, cls, 100) for t in np.arange(4) * 0.5 for cls in ("kick", "tom")]
+    hits += [(0.0, "cymbal", 100)]
+    root, doc = transcribe_case(xsd, tmp_path, monkeypatch, sorted(hits), 3.0)
+    assert any("merged" in e["flags"] for e in doc["events"])
+    slots = Counter(
+        (e["class"], e["quantized"]["measure"], e["quantized"]["beat"], e["quantized"]["slot"])
+        for e in doc["events"]
+    )
+    assert max(slots.values()) == 1  # one hit per class per slot
 
 
 def test_transcribe_writes_musicxml(xsd: Any, tmp_path: Path) -> None:

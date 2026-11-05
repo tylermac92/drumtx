@@ -239,7 +239,7 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - The detector produces per-class activation curves at 100 frames per second.
    - Peak picking uses per-class thresholds from the sensitivity preset and a minimum gap between peaks of the same class (about 30 ms).
    - Output events carry time, class, confidence (the peak activation, calibrated), and velocity (mapped from activation or onset energy; approximate).
-4. **Track.** The beat tracker estimates beats and downbeats, constrained by `--bpm`, `--time-signature`, and `--first-downbeat` when given. The resulting `TempoMap` records whether each value was estimated or user-supplied.
+4. **Track.** The beat tracker estimates beats and downbeats, constrained by `--bpm`, `--time-signature`, and `--first-downbeat` when given. The resulting `TempoMap` records whether each value was estimated or user-supplied. Where the tracker finds no beats, such as in a silence, beats are filled in at the median tempo, so the bars run on through it and later measures keep their numbers (M4-4).
 5. **Quantize.**
    - For each beat interval, events are converted to a phase (0–1).
    - Candidate grids are 4 subdivisions (16ths) and 3 subdivisions (8th-note triplets).
