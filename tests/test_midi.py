@@ -148,5 +148,6 @@ def test_transcribe_writes_the_midi_file(tmp_path: Path) -> None:
     assert mido.MidiFile(out / "in.mid").type == 1
     (out / "in.events.json").unlink()
     (out / "in.events.csv").unlink()
+    (out / "in.musicxml").unlink()
     result = CliRunner().invoke(app, args)  # only in.mid is left, and it is not overwritten
     assert result.exit_code == 2 and "in.mid already exists" in result.stderr

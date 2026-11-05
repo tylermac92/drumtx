@@ -26,7 +26,11 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run mypy src tests scripts
+      # The MusicXML tests validate against the MusicXML 4.0 XSD, which is not in the repo.
+      - run: uv run python scripts/fetch_musicxml_xsd.py "${{ runner.temp }}/musicxml-xsd"
       - run: uv run pytest
+        env:
+          DRUMTX_MUSICXML_XSD: ${{ runner.temp }}/musicxml-xsd
       - name: Install with pipx and smoke test
         run: |
           pipx install --python python .

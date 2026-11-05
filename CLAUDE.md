@@ -24,11 +24,11 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 - **Nightly CI benchmark:** it converts the beat model on every run, because the model isn't cached.
 
 **What M4-1 builds on:**
-- **Spike and MuseScore check:** decision 0007 (M0-6). `tests/golden/groove.musicxml` is the spike's output.
+- **Spike and MuseScore check:** decision 0007 (M0-6). The spike's output is `spikes/m0-6/groove_custom.musicxml`.
 - **Mapping:** `drumtx.mapping.load()` returns, per class, the name, MIDI note, `display` (staff step and octave), notehead and voice.
 - **Score data:** `QuantizedScore` comes from `quantize.quantize` plus `review.flag`.
 - **Where to write it:** the render stage in `pipeline.py` writes the outputs, through `render.write_outputs`.
-- **XSD validation:** the MusicXML 4.0 XSD isn't in the repo. M0-6 used local copies of `musicxml.xsd`, `xml.xsd` and `xlink.xsd` from <https://github.com/w3c/musicxml/tree/v4.0/schema>.
+- **XSD validation:** the MusicXML 4.0 XSD isn't in the repo. `scripts/fetch_musicxml_xsd.py` downloads `musicxml.xsd`, `xml.xsd` and `xlink.xsd` from <https://github.com/w3c/musicxml/tree/v4.0/schema>, SHA-256 checked.
 
 ## How each task is done
 
@@ -54,7 +54,8 @@ uv run --python 3.11 pytest -q
 
 - **CI runs** Linux, macOS and Windows, with Python 3.11 and 3.13.
 - **Why the per-platform mypy loop:** mypy has failed only on macOS before, from platform branches in `models.py`. If mypy acts strangely, run `rm -rf .mypy_cache`.
-- **Golden files** (`tests/golden/`) are compared byte for byte. After a deliberate change, regenerate them with `DRUMTX_UPDATE_GOLDEN=1 uv run pytest tests/test_midi.py` and review the diff.
+- **Golden files** (`tests/golden/`) are compared byte for byte. After a deliberate change, regenerate them with `DRUMTX_UPDATE_GOLDEN=1 uv run pytest tests/test_midi.py tests/test_musicxml.py` and review the diff.
+- **MusicXML tests** need the XSD: run `uv run python scripts/fetch_musicxml_xsd.py <dir>` once and set `DRUMTX_MUSICXML_XSD=<dir>`. Without it they skip, except in CI.
 - **Running the CLI:** use `uv run drumtx …`. `python -m drumtx.cli` does nothing, because there is no `__main__`.
 
 ## How the code fits together
@@ -70,6 +71,7 @@ uv run --python 3.11 pytest -q
 | `quantize.py` | Grid per beat, merges, residuals |
 | `review.py` | Flags and their thresholds |
 | `midi.py` | MIDI writer (decision 0011) |
+| `musicxml.py` | MusicXML writer (decision 0007) |
 | `mapping.py` | Instrument mapping (`mapping.toml`) |
 | `evaluate.py` | Onset, beat and grid metrics |
 | `models.py` | Model registry |
