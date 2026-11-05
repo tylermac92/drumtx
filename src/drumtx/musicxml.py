@@ -12,6 +12,8 @@ percussion part on a five-line staff.
 - The mapping gives each class its instrument name, MIDI note, staff position, notehead and voice;
   voice 1 has stems up, voice 2 stems down.
 - Hits without a grid position (with fewer than two beats) are left out.
+- With `mark_uncertain` (`--mark-uncertain`, M4-3), notes flagged `uncertain` by the review are
+  colored UNCERTAIN_COLOR. Without it, no color is written.
 """
 
 import xml.etree.ElementTree as ET
@@ -22,8 +24,9 @@ import numpy as np
 
 from drumtx.mapping import Mapping
 from drumtx.quantize import SLOTS
-from drumtx.schema import CLASSES, DrumClass, Grid, QuantizedScore
+from drumtx.schema import CLASSES, DrumEvent, Grid, QuantizedScore
 
+UNCERTAIN_COLOR = "#E00000"  # red
 DIVISIONS = 12  # per quarter: 16ths (3) and 8th-note triplets (4) are both whole numbers
 DOCTYPE = (
     '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" '
@@ -52,16 +55,16 @@ TYPES: dict[tuple[int, bool], tuple[str, int]] = {
 
 @dataclass
 class _Item:
-    """A note (a chord of classes) or a rest (no classes) in one voice."""
+    """A note (a chord of hits) or a rest (no hits) in one voice."""
 
     duration: int
-    classes: list[DrumClass]
+    hits: list[DrumEvent]
     triplet: bool = False
     beams: tuple[str, ...] = ()  # one entry per beam level
     tuplet: dict[str, str] | None = None  # attributes of <tuplet> on a triplet's first or last item
 
 
-def _beat(slots: dict[int, list[DrumClass]], grid: Grid) -> list[_Item]:
+def _beat(slots: dict[int, list[DrumEvent]], grid: Grid) -> list[_Item]:
     """One beat of one voice: a rest up to the first hit, then each hit lasting to the next."""
     k = SLOTS[grid]
     step, hits = DIVISIONS // k, sorted(slots)
@@ -72,7 +75,7 @@ def _beat(slots: dict[int, list[DrumClass]], grid: Grid) -> list[_Item]:
     triplet = grid == "triplet" and len(items) > 1  # one hit filling the beat is a plain quarter
     for x in items:
         x.triplet = triplet
-    beamed = [x for x in items if x.classes and TYPES[x.duration, triplet][0] != "quarter"]
+    beamed = [x for x in items if x.hits and TYPES[x.duration, triplet][0] != "quarter"]
     if triplet:
         # A triplet of three beamed notes shows only its number; any rest or quarter, a bracket.
         bracket = "no" if len(beamed) == len(items) else "yes"
@@ -90,7 +93,7 @@ def _beat(slots: dict[int, list[DrumClass]], grid: Grid) -> list[_Item]:
 
 
 def _measure(
-    cells: dict[int, dict[int, list[DrumClass]]], grids: dict[int, Grid], per_bar: int
+    cells: dict[int, dict[int, list[DrumEvent]]], grids: dict[int, Grid], per_bar: int
 ) -> list[_Item]:
     """One measure of one voice, from its hits per beat. Empty beats are quarter rests, two of
     them starting on an odd beat (1–2, 3–4) a half rest."""
@@ -108,10 +111,12 @@ def _measure(
     return items
 
 
-def _note(m: ET.Element, x: _Item, voice: int, instruments: Mapping) -> None:
+def _note(m: ET.Element, x: _Item, voice: int, instruments: Mapping, mark_uncertain: bool) -> None:
     kind, dots = TYPES[x.duration, x.triplet]
-    for i, cls in enumerate(x.classes or [None]):
-        n = _sub(m, "note")
+    for i, e in enumerate(x.hits or [None]):
+        cls = None if e is None else e.cls
+        uncertain = mark_uncertain and e is not None and "uncertain" in e.flags
+        n = _sub(m, "note", **({"color": UNCERTAIN_COLOR} if uncertain else {}))
         if i:
             _sub(n, "chord")
         if cls is None:
@@ -142,16 +147,18 @@ def _note(m: ET.Element, x: _Item, voice: int, instruments: Mapping) -> None:
                 _sub(_sub(n, "notations"), "tuplet", **x.tuplet)
 
 
-def musicxml_bytes(score: QuantizedScore, instruments: Mapping) -> bytes:
+def musicxml_bytes(
+    score: QuantizedScore, instruments: Mapping, mark_uncertain: bool = False
+) -> bytes:
     tm = score.tempo_map
     per_bar = tm.time_signatures[0].beats
     # (measure, voice) -> beat -> slot -> classes, in class order; (measure) -> beat -> grid
-    cells: dict[tuple[int, int], dict[int, dict[int, list[DrumClass]]]] = defaultdict(dict)
+    cells: dict[tuple[int, int], dict[int, dict[int, list[DrumEvent]]]] = defaultdict(dict)
     grids: dict[int, dict[int, Grid]] = defaultdict(dict)
     for e in sorted(score.events, key=lambda e: CLASSES.index(e.cls)):
         if q := e.quantized:
             beat = cells[q.measure, instruments[e.cls].voice].setdefault(q.beat, {})
-            beat.setdefault(q.slot, []).append(e.cls)
+            beat.setdefault(q.slot, []).append(e)
             grids[q.measure][q.beat] = q.grid
     first = min([1, *grids])
     last = max([1, *grids, *(b.measure for b in tm.beats)])
@@ -195,7 +202,7 @@ def musicxml_bytes(score: QuantizedScore, instruments: Mapping) -> bytes:
             if voice == 2:
                 _sub(_sub(m, "backup"), "duration", per_bar * DIVISIONS)
             for x in _measure(cells[number, voice], grids[number], per_bar):
-                _note(m, x, voice, instruments)
+                _note(m, x, voice, instruments, mark_uncertain)
 
     ET.indent(root)
     body = ET.tostring(root, encoding="unicode")

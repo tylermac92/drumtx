@@ -84,3 +84,13 @@ After a deliberate change, regenerate them with `DRUMTX_UPDATE_GOLDEN=1 uv run p
 **XSD validation.** `tests/test_musicxml.py` validates every output it writes (golden files, ten random scores with 2–7 beats per bar and a pickup, and a `transcribe` run) against the MusicXML 4.0 XSD, with lxml (a dev dependency). The XSD is not in the repo: `scripts/fetch_musicxml_xsd.py DIR` downloads it from the `v4.0` tag with its SHA-256 checked, and the tests read it from `DRUMTX_MUSICXML_XSD=DIR`. CI does both; elsewhere the tests skip without it.
 
 **MuseScore 3.2.3 check** (2026-11-05). All three golden files render as expected (percussion clef, x noteheads, two voices, the triplet bracket, ♩ = 120). Exported to MIDI, every hit is on channel 10 with the right note: the triplet case gives kick 36 ×5, snare 38 ×4, hi-hat 42 ×17, as in the groove. The `element already exists` lines are benign: MuseScore 3 logs one whenever two notes or rests of the part start on the same tick (a chord, or the two voices), as it records an instrument per tick. Every two-voice drum score triggers it; it does not change the import.
+
+## M4-3: uncertain notes
+
+With `--mark-uncertain`, every note whose hit the review flags `uncertain` gets `color="#E00000"` (red) on its `<note>`. Only those notes are colored; rests and the other notes of a chord stay black. Without the flag, the file has no `color` attribute at all, which a test checks. `events.json` records the choice in `settings.mark_uncertain`.
+
+**Which apps show it.** MuseScore 3.2.3 shows the red noteheads (checked 2026-11-05):
+- On the schema example groove, only its one uncertain hi-hat is red.
+- On the first 15 s of `MusicDelta_80sRock_MIX` (MDB Drums, development set), 19 of 82 hits are uncertain, and exactly 19 noteheads are red, most of them doubtful toms.
+
+MuseScore is the only supported app (Q4 above). Apps that ignore the `color` attribute show the notes in black, losing only the marking. `events.json` lists the same hits either way, as will the review report (M5-1). MuseScore 4 is part of the one-time manual check under Caveats.

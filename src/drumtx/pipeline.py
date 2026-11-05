@@ -56,6 +56,7 @@ class Config:
     grid: GridOption = "auto"
     midi_timing: MidiTiming = "quantized"
     mapping: Path | None = None  # --mapping; None is the default mapping.toml
+    mark_uncertain: bool = False
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -181,6 +182,7 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
             "grid": cfg.grid,
             "midi_timing": cfg.midi_timing,
             "mapping": cfg.mapping.name if cfg.mapping else None,
+            "mark_uncertain": cfg.mark_uncertain,
         },
         models={
             "detector": cfg.model,
@@ -193,7 +195,7 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
         log.warning("No drum events detected.")
     instruments = mapping.load(cfg.mapping)
     midi = midi_bytes(score, {cls: i.midi_note for cls, i in instruments.items()}, cfg.midi_timing)
-    musicxml = musicxml_bytes(score, instruments)
+    musicxml = musicxml_bytes(score, instruments, cfg.mark_uncertain)
     return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi, musicxml)
 
 

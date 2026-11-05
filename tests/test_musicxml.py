@@ -13,16 +13,23 @@ import soundfile as sf
 from lxml import etree
 from typer.testing import CliRunner
 
-from drumtx import mapping
+from drumtx import mapping, review
 from drumtx.beats import tempo_map
 from drumtx.cli import app
 from drumtx.ingest import SAMPLE_RATE
-from drumtx.musicxml import DIVISIONS, TYPES, _beat, _Item, _measure, musicxml_bytes
+from drumtx.musicxml import (
+    DIVISIONS,
+    TYPES,
+    UNCERTAIN_COLOR,
+    _beat,
+    _Item,
+    _measure,
+    musicxml_bytes,
+)
 from drumtx.quantize import quantize
 from drumtx.schema import (
     CLASSES,
     Beat,
-    DrumClass,
     DrumEvent,
     QuantizedScore,
     TempoMap,
@@ -34,6 +41,7 @@ from drumtx.synth import render
 GOLDEN = Path(__file__).parent / "golden"
 EXAMPLE = Path(__file__).parents[1] / "docs" / "schema" / "examples" / "groove.events.json"
 INSTRUMENTS = mapping.load()
+SNARE = DrumEvent(1.0, "snare", 0.9, 100)
 
 
 @pytest.fixture(scope="module")
@@ -182,7 +190,7 @@ def show(items: list[_Item]) -> list[str]:
     out = []
     for x in items:
         kind, dots = TYPES[x.duration, x.triplet]
-        name = ("" if x.classes else "rest ") + kind + "." * dots + " 3" * x.triplet
+        name = ("" if x.hits else "rest ") + kind + "." * dots + " 3" * x.triplet
         out.append(" ".join([name, "/".join(x.beams)]).strip())
     return out
 
@@ -212,7 +220,7 @@ def show(items: list[_Item]) -> list[str]:
 )
 def test_16th_beats(slots: tuple[int, ...], want: list[str]) -> None:
     """Notes last until the next hit in the beat; a rest fills the start; beams per beat."""
-    assert show(_beat({s: ["snare"] for s in slots}, "16th")) == want
+    assert show(_beat({s: [SNARE] for s in slots}, "16th")) == want
 
 
 @pytest.mark.parametrize(
@@ -228,7 +236,7 @@ def test_16th_beats(slots: tuple[int, ...], want: list[str]) -> None:
 )
 def test_triplet_beats(slots: tuple[int, ...], want: list[str], bracket: str | None) -> None:
     """Three beamed notes show only the 3; with a rest or a quarter, the bracket too."""
-    items = _beat({s: ["hihat"] for s in slots}, "triplet")
+    items = _beat({s: [SNARE] for s in slots}, "triplet")
     assert show(items) == want
     assert (items[0].tuplet or {}).get("bracket") == bracket
     assert (items[-1].tuplet or {}).get("type") == ("stop" if bracket else None)
@@ -248,5 +256,30 @@ def test_triplet_beats(slots: tuple[int, ...], want: list[str], bracket: str | N
 def test_empty_beats_are_consolidated(
     per_bar: int, beats: tuple[int, ...], want: list[str]
 ) -> None:
-    hits: dict[int, dict[int, list[DrumClass]]] = {b: {1: ["kick"]} for b in beats}
+    hits = {b: {1: [SNARE]} for b in beats}
     assert show(_measure(hits, {b: "16th" for b in beats}, per_bar)) == want
+
+
+def test_mark_uncertain(xsd: Any) -> None:
+    """The groove has one uncertain hi-hat. Only it is colored, and only with mark_uncertain."""
+    score = review.flag(example((1, 2)))
+    assert sum("uncertain" in e.flags for e in score.events) == 1
+    assert b"color" not in musicxml_bytes(score, INSTRUMENTS)
+    root = check(xsd, musicxml_bytes(score, INSTRUMENTS, mark_uncertain=True))
+    colored = [n for n in root.iter("note") if n.get("color")]
+    assert [(n.get("color"), n.find("instrument").get("id")) for n in colored] == [  # type: ignore[union-attr]
+        (UNCERTAIN_COLOR, "P1-hihat")
+    ]
+
+
+def test_transcribe_mark_uncertain(tmp_path: Path) -> None:
+    wav, out = tmp_path / "in.wav", tmp_path / "out"
+    sf.write(wav, render([(1.0, "kick", 100), (1.5, "snare", 100)], 4.0), SAMPLE_RATE)
+    args = ["transcribe", str(wav), "-o", str(out), "-q", "--model", "baseline", "--force"]
+    assert CliRunner().invoke(app, args).exit_code == 0
+    assert b"color=" not in (out / "in.musicxml").read_bytes()
+    assert CliRunner().invoke(app, [*args, "--mark-uncertain"]).exit_code == 0
+    doc = json.loads((out / "in.events.json").read_text())
+    assert doc["settings"]["mark_uncertain"] is True
+    uncertain = sum("uncertain" in e["flags"] for e in doc["events"])
+    assert (out / "in.musicxml").read_bytes().count(b'color="') == uncertain

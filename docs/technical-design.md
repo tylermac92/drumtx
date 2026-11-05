@@ -87,7 +87,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 | `--grid` | `auto` | `16th`, `triplet`, or `auto` (chosen per beat). |
 | `--start SEC`, `--end SEC` | whole file | Transcribe an excerpt. |
 | `--max-duration SEC` | 600 | Longest audio accepted (the selected excerpt, if any). |
-| `--mark-uncertain` | off | Color low-confidence notes in the MusicXML. |
+| `--mark-uncertain` | off | Color notes flagged `uncertain` (confidence below the review threshold) red in the MusicXML. |
 | `--midi-timing` | `quantized` | `quantized` (on grid, aligned to audio through the tempo map) or `performance` (raw times). |
 | `--device` | `cpu` | `cpu` or `cuda`, for `--separate` only. Detection always runs on CPU in the MVP. |
 | `--model ID` | registry default | Detection model. `baseline` selects the classical detector, which needs no download (beat tracking still needs its model). |
@@ -302,7 +302,7 @@ Accuracy will vary by recording. The workflow lets users find errors quickly ins
    - in the notation editor or DAW, opening `.musicxml` or `.mid` directly; or
    - in `events.csv` (add, delete, or reclassify rows), followed by `drumtx render`.
    
-   `--mark-uncertain` colors low-confidence notes in the score. Whether each notation app shows the color is verified in M4.
+   `--mark-uncertain` colors the notes flagged `uncertain` red (`#E00000`) in the MusicXML. MuseScore 3.2.3 shows the color (M4-3, decision 0007). MuseScore is the only supported notation app; other apps may ignore color. Without the flag, the MusicXML carries no color.
 5. **Measure accuracy with `drumtx evaluate`** when a reference exists. This is for developers and for regression tracking.
 
 The tool never claims a transcription is correct. Every report ends with a short limitations note.
