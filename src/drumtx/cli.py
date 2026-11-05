@@ -215,6 +215,10 @@ def evaluate(
     ref_beats: Annotated[
         Path | None, typer.Option(help="Reference beats CSV (time_s,beat), for beat metrics.")
     ] = None,
+    ref_score: Annotated[
+        Path | None,
+        typer.Option(help="Reference score CSV (with measure,beat,grid,slot), for grid accuracy."),
+    ] = None,
     tolerance_ms: Annotated[
         list[float] | None,
         typer.Option(help="Onset tolerance in ms; repeat for several.", show_default="50, 30"),
@@ -231,8 +235,9 @@ def evaluate(
         tolerances = tuple(tolerance_ms or ev.DEFAULT_TOLERANCES_MS)
         if any(t <= 0 for t in tolerances):
             raise InputError(f"--tolerance-ms must be positive, got {tolerances}")
+        score = ev.load_score(ref_score) if ref_score else None
         result = ev.evaluate(
-            ev.load_prediction(pred), ev.load_reference(ref, ref_beats), tolerances
+            ev.load_prediction(pred), ev.load_reference(ref, ref_beats), tolerances, score
         )
         report = ev.markdown(result, pred, ref)
         if out is not None:

@@ -101,3 +101,31 @@ def test_reliability_bins() -> None:
     conf = np.array([0.1, 0.15, 0.5, 0.9, 1.0])
     hit = np.array([0.0, 1.0, 1.0, 1.0, 1.0])
     assert reliability(conf, hit) == [("0.0–0.2", 2, 0.5), ("0.4–0.6", 1, 1.0), ("0.8–1.0", 2, 1.0)]
+
+
+def test_compare_rhythm() -> None:
+    def with_rhythm(beat_f: float, grid: float, hits: int = 10) -> dict[str, Any]:
+        r = result(0.8)
+        rhythm = {"beat_f": beat_f, "downbeat_f": 0.5, "grid_accuracy": grid, "grid_hits": hits}
+        r["rhythm"] = {"all": rhythm}
+        return r
+
+    lines = compare(with_rhythm(0.70, 0.90), with_rhythm(0.80, 0.80), margin=0.02)
+    assert lines[0].startswith("REGRESSION") and "beat_f" in lines[0]
+    assert lines[1].startswith("improved") and "grid_accuracy" in lines[1]
+    # A subset without reference scores has no grid accuracy to compare.
+    assert compare(with_rhythm(0.8, 0.0, hits=0), with_rhythm(0.8, 0.8), margin=0.02) == []
+
+
+def test_markdown_rhythm() -> None:
+    r: dict[str, Any] = {
+        "model": "adtof", "split": "dev", "commit": "abc", "date": "2026-11-05", "clips": 1,
+        "audio_minutes": 2.0, "runtime_s": 3.0, "s_per_audio_minute": 0.5, "results": {},
+        "rhythm": {"drum-only": {
+            "clips": 3, "beat_f": 0.9, "downbeat_f": 0.75, "grid_hits": 120,
+            "grid_accuracy": 0.6, "grid_accuracy_matched": 0.8,
+        }},
+    }  # fmt: skip
+    assert "| drum-only | 3 | 0.90 | 0.75 | 0.60 (120) | 0.80 |" in markdown(r)
+    r["rhythm"]["drum-only"]["grid_hits"] = 0
+    assert "| drum-only | 3 | 0.90 | 0.75 | – | – |" in markdown(r)

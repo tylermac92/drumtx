@@ -1,6 +1,7 @@
 name: Benchmark
 
-# Detector accuracy on the development set (M1-6, decision 0010). Manual, and nightly.
+# Detector and rhythm accuracy on the development set (M1-6, M3-6; decisions 0010, 0012).
+# Manual, and nightly.
 on:
   workflow_dispatch:
   schedule:
@@ -35,6 +36,10 @@ jobs:
           unzip -q "$zip" -d "$DATA/idmt-smt-drums"
           uv run python scripts/build_corpus.py "$DATA" --fetch-egmd
           git diff --exit-code eval/  # the rebuilt manifests must equal the frozen ones
+
+      # Rhythm metrics (M3-6) track beats with Beat This!, converted once with uv (decision 0006).
+      - name: Install the beat tracker
+        run: uv run drumtx models download beat-this-final0
 
       - name: Benchmark the baseline
         run: >

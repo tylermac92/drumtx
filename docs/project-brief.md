@@ -62,11 +62,13 @@ The output is treated as a **first draft to be corrected**, not a finished trans
 
 ## Key success measures
 
-The onset targets were reviewed after the baseline was measured (M1-6, decision 0010), which also added targets for tom, cymbal, and full-mix audio. Rhythm targets (downbeat F-measure and grid accuracy) are set in M3-6, once rhythm can be measured.
+The onset targets were reviewed after the baseline was measured (M1-6, decision 0010), which also added targets for tom, cymbal, and full-mix audio. The rhythm targets were set in M3-6 from the first rhythm benchmark (decision 0012).
 
 | Measure | Target |
 |---|---|
 | Per-class onset F-measure on a held-out test set, ±50 ms tolerance | Reported separately for drum-only and full-mix audio. Drum-only: ≥ 0.85 for kick and snare, ≥ 0.75 for hi-hat, ≥ 0.60 for tom and cymbal. Full mix: ≥ 0.75 for kick, ≥ 0.70 for snare and hi-hat, ≥ 0.50 for cymbal; tom is reported without a target (too few test hits). |
+| Downbeat F-measure on the test set, ±70 ms | ≥ 0.85, for drum-only and for full-mix audio. |
+| Grid accuracy on the test set: share of the reference score's hits that DrumTx detected and placed in the correct measure, beat and slot | ≥ 0.75 on drum-only audio. The share over all reference hits, missed ones included, is reported without a target. |
 | Notation validity | 100% of generated MusicXML validates against the MusicXML 4.0 schema and opens in MuseScore without errors on the development set during work (M4-5) and on the test set at release (M7-4). |
 | Runtime | ≤ 1× real time on a reference laptop CPU without separation (the reference machine is in decision 0008). |
 | Correction effort | On your own recordings, correcting the draft is faster than transcribing by hand (timed on at least two tracks in M7-1). |

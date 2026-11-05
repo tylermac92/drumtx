@@ -9,8 +9,11 @@
     python scripts/benchmark.py --model adtof --subset full-mix --separate  # needs the extra
 
 Writes JSON and a Markdown table (default eval/results/<model>-<split>.json and .md) with the
-commit, model ID, runtime, and P/R/F per preset, subset, tolerance and class. With --compare, every
-F-measure that dropped by more than --margin is listed as a regression and the exit code is 1.
+commit, model ID, runtime, and P/R/F per preset, subset, tolerance and class. Rhythm (M3-6): beat
+and downbeat F-measure (mean over the clips with reference beats) and grid accuracy (pooled over
+the hits of the clips with a reference score), from the `balanced` detections and the tracked
+beats, with the meter taken from the reference beats (as `--time-signature`). With --compare,
+every score that dropped by more than --margin is listed as a regression and the exit code is 1.
 Reads the corpus from DATA (decision 0004); audio hashes are checked against the manifest.
 """
 
@@ -26,15 +29,16 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import mir_eval
 import numpy as np
 import soundfile as sf
 import soxr
 
-from drumtx import detect, features, models
-from drumtx.evaluate import match_counts, scores
+from drumtx import beats, detect, features, models, pipeline
+from drumtx import evaluate as ev
+from drumtx.evaluate import match_counts, match_events, scores
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
-from drumtx.schema import CLASSES, DrumClass
+from drumtx.quantize import quantize
+from drumtx.schema import CLASSES, DrumClass, DrumEvent
 from drumtx.separate import isolate_drums
 
 REPO = Path(__file__).resolve().parents[1]
@@ -126,11 +130,6 @@ def choose_presets(counts: Counts) -> dict[str, Any]:
         for p, b in BETA.items()
     }
     return {"min_gap_s": gap, "thresholds": thresholds}
-
-
-def match_events(ref: np.ndarray, est: np.ndarray, tolerance_s: float) -> list[tuple[int, int]]:
-    """(reference index, estimate index) pairs, as in match_counts."""
-    return mir_eval.util.match_events(ref, est, tolerance_s) if len(ref) and len(est) else []
 
 
 def fit_logistic(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
@@ -231,9 +230,69 @@ def tune_model(
     print(f"wrote {detect.MODEL_PRESETS_FILE}:\n{json.dumps(presets, indent=2)}")
 
 
+RHYTHM_METRICS = ("beat_f", "downbeat_f", "grid_accuracy")
+
+
+def rhythm(
+    clips: list[dict[str, str]],
+    mixes: dict[str, AudioBuffer],
+    detected: dict[str, list[DrumEvent]],
+    data: Path,
+) -> dict[str, dict[str, float | int]]:
+    """Beat, downbeat and grid scores per subset, source and "all" (see the module docstring)."""
+    beat_f: dict[str, list[float]] = {}
+    downbeat_f: dict[str, list[float]] = {}
+    grid: dict[str, np.ndarray] = {}
+    for r in clips:
+        if r["beats"] != "1":
+            continue
+        base = data / "corpus" / r["clip_id"]
+        ref_beats = ev._read_beats(base.with_name(base.name + ".beats.csv"))
+        per_bar = max(b for _, b in ref_beats)
+        tracked = pipeline.track_beats(mixes[r["clip_id"]], offline=False)
+        tm = beats.tempo_map(
+            np.array(tracked["beats"]), np.array(tracked["downbeats"]), per_bar,
+            time_signature_given=True,
+        )  # fmt: skip
+        score = quantize(detected[r["clip_id"]], tm)
+        pred = ev.from_score(list(score.events), [(b.time_s, b.beat) for b in tm.beats])
+        ref = ev.Track({c: np.array([]) for c in CLASSES}, ref_beats)
+        ref_score = (
+            ev.load_score(base.with_name(base.name + ".score.csv")) if r["score"] == "1" else None
+        )
+        result = ev.evaluate(pred, ref, (50.0,), ref_score)
+        for key in (r["subset"], "all", r["source"]):
+            beat_f.setdefault(key, []).append(result["beats"]["beat_f"])
+            downbeat_f.setdefault(key, []).append(result["beats"]["downbeat_f"])
+            if result["grid"] is not None:
+                g = result["grid"]
+                grid[key] = grid.get(key, 0) + np.array([g["placed"], g["matched"], g["correct"]])
+    out: dict[str, dict[str, float | int]] = {}
+    for key in beat_f:
+        placed, matched, correct = (int(n) for n in grid.get(key, np.zeros(3)))
+        g = ev.grid_scores(placed, matched, correct)
+        out[key] = {
+            "clips": len(beat_f[key]),
+            "beat_f": round(float(np.mean(beat_f[key])), 3),
+            "downbeat_f": round(float(np.mean(downbeat_f[key])), 3),
+            "grid_hits": placed,
+            "grid_accuracy": round(float(g["accuracy"]), 3),
+            "grid_accuracy_matched": round(float(g["accuracy_matched"]), 3),
+        }
+    return out
+
+
 def compare(new: dict[str, Any], old: dict[str, Any], margin: float) -> list[str]:
-    """Lines for every F-measure that moved by more than `margin`; regressions first."""
+    """Lines for every score that moved by more than `margin`; regressions first."""
     worse, better = [], []
+
+    def check(line: str, before: float, after: float) -> None:
+        line += f" {before:.3f} → {after:.3f}"
+        if after < before - margin:
+            worse.append("REGRESSION  " + line)
+        elif after > before + margin:
+            better.append("improved    " + line)
+
     for preset, tables in new["results"].items():
         for table, per_class in tables.items():
             for c, s in per_class.items():
@@ -241,11 +300,15 @@ def compare(new: dict[str, Any], old: dict[str, Any], margin: float) -> list[str
                     before = old["results"][preset][table][c]["f"]
                 except KeyError:
                     continue
-                line = f"{preset:9} {table:22} {c:7} F {before:.3f} → {s['f']:.3f}"
-                if s["f"] < before - margin:
-                    worse.append("REGRESSION  " + line)
-                elif s["f"] > before + margin:
-                    better.append("improved    " + line)
+                check(f"{preset:9} {table:22} {c:7} F", before, s["f"])
+    for table, metrics in new.get("rhythm", {}).items():
+        for m in RHYTHM_METRICS:
+            try:
+                before = old["rhythm"][table][m]
+            except KeyError:
+                continue
+            if metrics.get("grid_hits", 1) or m != "grid_accuracy":
+                check(f"rhythm    {table:22} {m:13}", before, metrics[m])
     return worse + better
 
 
@@ -270,6 +333,24 @@ def markdown(result: dict[str, Any]) -> str:
         for table, per_class in tables.items():
             cells = " | ".join(f"{per_class[c]['f']:.2f}" for c in CLASSES)
             out.append(f"| {preset} | {table} | {cells} |")
+    if result.get("rhythm"):
+        out += [
+            "",
+            "Rhythm (`balanced` detections, tracked beats; beats and downbeats ±70 ms):",
+            "",
+        ]
+        out += [
+            "| Subset | Clips | Beat F | Downbeat F | Grid accuracy (hits) | Of hits found |",
+            "|---|---|---|---|---|---|",
+        ]
+        for table, m in result["rhythm"].items():
+            grid = "– | –"  # no reference scores in this subset
+            if m["grid_hits"]:
+                found = m["grid_accuracy_matched"]
+                grid = f"{m['grid_accuracy']:.2f} ({m['grid_hits']}) | {found:.2f}"
+            out.append(
+                f"| {table} | {m['clips']} | {m['beat_f']:.2f} | {m['downbeat_f']:.2f} | {grid} |"
+            )
     out += ["", "Precision by confidence (`sensitive` detections, 50 ms):", ""]
     out += ["| Class | Confidence | Detections | Precision |", "|---|---|---|---|"]
     for c, rows in result.get("reliability", {}).items():
@@ -304,6 +385,7 @@ def main() -> None:
     clips = list(csv.DictReader((REPO / "eval" / f"{args.split}.csv").open()))
     clips = [r for r in clips if args.subset in (None, r["subset"])]
     buffers = {r["clip_id"]: load(args.data / r["audio"], r["audio_sha256"]) for r in clips}
+    mixes = buffers  # beats are tracked on the mix, as in transcribe
     separation_s = 0.0
     if args.separate:
         start = time.perf_counter()
@@ -318,10 +400,13 @@ def main() -> None:
         tune(buffers, refs)
     totals: dict[tuple[str, str, str, float, str], np.ndarray] = {}
     rated: dict[str, list[tuple[float, bool]]] = {c: [] for c in CLASSES}  # sensitive: conf, hit
+    balanced: dict[str, list[DrumEvent]] = {}
     start = time.perf_counter()
     for preset in PRESETS:
         for r in clips:
             events = detector.detect(buffers[r["clip_id"]], preset)
+            if preset == "balanced":
+                balanced[r["clip_id"]] = events
             for c in CLASSES:
                 est = np.array([e.time_s for e in events if e.cls == c])
                 for tol in TOLERANCES:
@@ -335,6 +420,9 @@ def main() -> None:
                     rated[c] += [(x, j in hits) for j, x in enumerate(conf)]
     runtime = time.perf_counter() - start
     minutes = sum(float(r["duration_s"]) for r in clips) / 60
+    start = time.perf_counter()
+    rhythm_results = rhythm(clips, mixes, balanced, args.data)
+    rhythm_s = time.perf_counter() - start
 
     result: dict[str, Any] = {
         "model": args.model,
@@ -347,6 +435,8 @@ def main() -> None:
         "s_per_audio_minute": round(runtime / minutes / len(PRESETS), 3),
         "separate": args.separate,
         "separation_s_per_audio_minute": round(separation_s / minutes, 2),
+        "rhythm_runtime_s": round(rhythm_s, 1),
+        "rhythm": rhythm_results,
         "results": {
             preset: {
                 f"{subset} @ {ms} ms": {
