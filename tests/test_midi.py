@@ -28,7 +28,7 @@ from drumtx.schema import (
 )
 from drumtx.synth import render
 
-NOTES = {cls: t["midi_note"] for cls, t in mapping.load().items()}
+NOTES = {cls: i.midi_note for cls, i in mapping.load().items()}
 GOLDEN = Path(__file__).parent / "golden"
 EXAMPLE = Path(__file__).parents[1] / "docs" / "schema" / "examples" / "groove.events.json"
 

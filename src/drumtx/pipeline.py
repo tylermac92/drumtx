@@ -54,6 +54,7 @@ class Config:
     first_downbeat: float | None = None
     grid: GridOption = "auto"
     midi_timing: MidiTiming = "quantized"
+    mapping: Path | None = None  # --mapping; None is the default mapping.toml
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -178,6 +179,7 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
             "first_downbeat": cfg.first_downbeat,
             "grid": cfg.grid,
             "midi_timing": cfg.midi_timing,
+            "mapping": cfg.mapping.name if cfg.mapping else None,
         },
         models={
             "detector": cfg.model,
@@ -188,7 +190,7 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     )
     if not events:
         log.warning("No drum events detected.")
-    notes = {cls: table["midi_note"] for cls, table in mapping.load().items()}
+    notes = {cls: i.midi_note for cls, i in mapping.load(cfg.mapping).items()}
     midi = midi_bytes(score, notes, cfg.midi_timing)
     return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi)
 
