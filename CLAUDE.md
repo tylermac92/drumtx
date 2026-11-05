@@ -14,8 +14,7 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M3-5.
-- **M3-6** (rhythm evaluation) is in PR #30. If it isn't merged yet, finish that first.
+- **Done and merged:** M0 to M3-6, through PR #30.
 - **Next task: M4-1, the MusicXML writer core.** Then M4-2 to M4-5, M5 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
