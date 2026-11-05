@@ -49,4 +49,4 @@ All targets are per-class onset F-measure at ±50 ms, for the release model on t
 
 **Also required.** In M2-1, the learned model must beat the baseline (`eval/results/baseline-dev.json`) on every class on the development set, not only on kick, snare and hi-hat.
 
-Rhythm targets (downbeat F-measure, grid accuracy) are set in M3-6.
+Rhythm targets (downbeat F-measure, grid accuracy) were set in M3-6: decision 0012.

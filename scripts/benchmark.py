@@ -344,9 +344,12 @@ def markdown(result: dict[str, Any]) -> str:
             "|---|---|---|---|---|---|",
         ]
         for table, m in result["rhythm"].items():
+            grid = "– | –"  # no reference scores in this subset
+            if m["grid_hits"]:
+                found = m["grid_accuracy_matched"]
+                grid = f"{m['grid_accuracy']:.2f} ({m['grid_hits']}) | {found:.2f}"
             out.append(
-                f"| {table} | {m['clips']} | {m['beat_f']:.2f} | {m['downbeat_f']:.2f} | "
-                f"{m['grid_accuracy']:.2f} ({m['grid_hits']}) | {m['grid_accuracy_matched']:.2f} |"
+                f"| {table} | {m['clips']} | {m['beat_f']:.2f} | {m['downbeat_f']:.2f} | {grid} |"
             )
     out += ["", "Precision by confidence (`sensitive` detections, 50 ms):", ""]
     out += ["| Class | Confidence | Detections | Precision |", "|---|---|---|---|"]

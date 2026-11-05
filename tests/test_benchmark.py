@@ -118,7 +118,7 @@ def test_compare_rhythm() -> None:
 
 
 def test_markdown_rhythm() -> None:
-    r = {
+    r: dict[str, Any] = {
         "model": "adtof", "split": "dev", "commit": "abc", "date": "2026-11-05", "clips": 1,
         "audio_minutes": 2.0, "runtime_s": 3.0, "s_per_audio_minute": 0.5, "results": {},
         "rhythm": {"drum-only": {
@@ -127,3 +127,5 @@ def test_markdown_rhythm() -> None:
         }},
     }  # fmt: skip
     assert "| drum-only | 3 | 0.90 | 0.75 | 0.60 (120) | 0.80 |" in markdown(r)
+    r["rhythm"]["drum-only"]["grid_hits"] = 0
+    assert "| drum-only | 3 | 0.90 | 0.75 | – | – |" in markdown(r)

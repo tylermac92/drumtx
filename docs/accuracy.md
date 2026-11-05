@@ -6,7 +6,7 @@ How well DrumTx finds drum hits with its default detector, the ADTOF model (`--m
 
 More detail, development-set results and how each number was produced are in the model card, `docs/models/adtof-frame-rnn.md`. The raw results are in `eval/results/adtof-test.json`.
 
-The scores below are for **hit detection only**: the right instrument at the right time. Tempo, bar lines and notation accuracy come later (M3–M4).
+The scores below are for **hit detection only**: the right instrument at the right time. Beats, bar lines and grid positions are in [Rhythm](#rhythm-development-set) at the end.
 
 ## How to read the numbers
 
@@ -84,3 +84,17 @@ Velocity is only a rough loud/soft estimate.
 - **Toms in full mixes are unreliable** (F 0.47, from only 75 test hits).
 - **Five instrument classes only.** Toms are one class, crash and ride are one class, and open and closed hi-hat are one class.
 - **Numbers come from public datasets.** Your own recordings may differ; the M7-1 trial measures that.
+
+## Rhythm (development set)
+
+How well DrumTx finds the beats and places hits on the grid (decision 0012; the test-set check is M7-4):
+
+| | Drum-only | Full mix |
+|---|---|---|
+| Beats found (F-measure, ±70 ms) | 0.98 | 0.93 |
+| Downbeats found (F-measure, ±70 ms) | 0.87 | 0.86 |
+| Detected hits in the right bar, beat and slot | 0.71 | not measured |
+
+- **Wrong bar lines** are the main rhythm error. In about one clip in seven, every bar is shifted by a whole bar or by a beat. If bar 1 looks wrong, pass `--first-downbeat` with the time of the first downbeat. If the tempo looks halved or doubled, pass `--bpm`.
+- **Swing is written as straight 16ths.** A single swung 8th note in a beat stays on the 16th grid, not a triplet.
+- **The time signature is never detected.** Pass `--time-signature` for anything other than 4/4.
