@@ -320,7 +320,7 @@ The tool never claims a transcription is correct. Every report ends with a short
 | Synthetic end-to-end | MIDI patterns rendered to audio with drum sounds synthesized in code (seeded; optional noise and backing) → `transcribe` → per-class F-measure above a fixture threshold; exact grid recovery at a known tempo | Every commit (short clips) |
 | CLI | Commands, options, exit codes, messages through `CliRunner` | Every commit |
 | Benchmark | Full development and test sets; per-class P/R/F, beat and downbeat F-measure, grid accuracy, runtime; compared against the last release | Nightly or manual; required before each release |
-| Compatibility | Sample outputs opened in MuseScore (scripted conversion to PDF where MuseScore is available); manual checks in other apps chosen per open question Q4 | Nightly or manual; before each release |
+| Compatibility | Every development-set transcription converted with the MuseScore command line, checking its messages and its MIDI export (`scripts/check_musescore.py`, M4-5); manual checks in `docs/compatibility.md` | Nightly or manual; before each release |
 | Cross-platform install | `pipx install` from the built wheel plus the `doctor` smoke test on 3 operating systems | Every commit to main; each release |
 | Robustness | Corrupt, truncated, silent, very short, or very long files; unusual sample rates; non-ASCII paths | Every commit |
 
@@ -386,7 +386,7 @@ The tool never claims a transcription is correct. Every report ends with a short
 | Full-mix evaluation data is thin: about 11 minutes per split, with toms below the stability minimum (M0-3) | Full-mix and tom numbers are unreliable | Report them as unreliable; add annotated recordings of your own (optional, about 5–25 days, decision 0008), partly through M7-2. |
 | Feature code is reimplemented in NumPy (madmom-style spectrogram for ADTOF, log-mel for Beat This!) | Silent accuracy loss if the features drift from what the models were trained on | One-time comparisons against the originals in M2-1 (done: no ADTOF onset changed; docs/models/adtof-frame-rnn.md) and M3-1 (beats within one frame); PyTorch fallback extra for the beat tracker (decision 0006). |
 | Upstream Beat This! checkpoints are pickles (M0-5) | Converting them runs code from the file | Convert once, in a throwaway environment, only files whose SHA-256 matches the registry; the runtime loads only ONNX (M2-5). |
-| MusicXML import was checked only in MuseScore 3.2.3 (M0-6) | MuseScore 4 may import differently | Open the golden file in MuseScore 4 once; M4-5 checks every development-set output. |
+| MusicXML import was checked only in MuseScore 3.2.3 (M0-6) | MuseScore 4 may import differently | Open the golden file in MuseScore 4 once; M4-5 checks every development-set output in MuseScore 3 (`docs/compatibility.md`). |
 | The reference machine is a fast 20-core laptop (decision 0008) | Meeting the 1× target there says little about ordinary laptops | Spike timings run about 20× faster than real time on 4 cores; M6-1 adds a 4-thread run if usage exceeds 0.25× real time. |
 
 ## 14. Open questions
