@@ -256,7 +256,7 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - the local tempo deviates more than 8% from the median;
    - a collision merge happened in them.
 
-   The flag thresholds are configurable (`review.Thresholds`, M3-3) and tuned in M5. The flags are computed with the quantized score, so they are in `events.json` as well as the report. With the defaults, 67% of development measures are flagged (uncertain 40%, off-grid 42%, merged 15%, tempo 1%), too many to guide a review; M5-5 tunes them.
+   The flag thresholds are configurable (`review.Thresholds`, M3-3) and tuned in M5. The flags are computed with the quantized score, so they are in `events.json` as well as the report. With the defaults, 67% of development measures are flagged (uncertain 40%, off-grid 42%, merged 15%, tempo 1%), too many to guide a review; M5-4 tunes them.
 
 `drumtx render` re-enters this flow at step 5, using a provided JSON or CSV file. An edited CSV has no tempo map, so `render` takes the tempo map from the sibling JSON file (`<name>.events.json`), adjusted by `--first-downbeat` or `--time-signature` when given. `render` then rewrites `events.json` as described in §4.
 

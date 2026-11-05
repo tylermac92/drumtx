@@ -13,7 +13,7 @@ Measures (only flagged measures are listed):
   `Thresholds.tempo`.
 - `merged`: contains a merged event.
 
-The defaults are first estimates; M5-5 tunes them on the development set.
+The defaults are first estimates; M5-4 tunes them on the development set.
 """
 
 from collections import defaultdict
