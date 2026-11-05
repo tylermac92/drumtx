@@ -94,3 +94,29 @@ With `--mark-uncertain`, every note whose hit the review flags `uncertain` gets 
 - On the first 15 s of `MusicDelta_80sRock_MIX` (MDB Drums, development set), 19 of 82 hits are uncertain, and exactly 19 noteheads are red, most of them doubtful toms.
 
 MuseScore is the only supported app (Q4 above). Apps that ignore the `color` attribute show the notes in black, losing only the marking. `events.json` lists the same hits either way, as will the review report (M5-1). MuseScore 4 is part of the one-time manual check under Caveats.
+
+## M4-4: edge cases
+
+**Measure numbers** in the MusicXML are the `measure` of the hits' positions in `events.json`, which the review report will also use (M5-1). Measure 0 is the pickup.
+
+| Case | What the score shows |
+|---|---|
+| Hits before the first downbeat | Measure 0: a full measure padded with rests in front, written `implicit="yes"`, so notation apps don't count it and number the next measure 1. It appears only when it has hits. |
+| Audio ends mid-measure | The last measure is padded with rests to full length. |
+| Long silence | Whole-measure rests. The beat tracker finds no beats in a silence, so the tempo map used to turn the whole silence into one beat. All later measures were then numbered too low, in the score, the MIDI file and `events.json`. `beats.tempo_map` now fills any interval of 1.5 median beats or more with beats at the median tempo. A single skipped beat is restored the same way. |
+| Very dense passages | Hits finer than the grid are merged by the quantizer (one hit per class per slot), and each slot is one chord per voice. |
+
+Each case has a fixture test in `tests/test_musicxml.py`. It runs synthesized audio through `transcribe`, with a scripted beat tracker for the pickup, the partial measure and the silence, and checks:
+- `events.json` against its JSON Schema;
+- the MusicXML against the XSD;
+- every measure's notes against the hits `events.json` numbers into it.
+
+**Real data (2026-11-05).** `drummer3_session2_5_rock_100_beat_4-4_43` (E-GMD, development set), with low-level noise (−60 dB) spliced in after 12 s:
+
+| Break | Spurious beats from the tracker | Measure the music resumes in | True measure |
+|---|---|---|---|
+| 4 s | 0 | 7 | ≈ 7.4 |
+| 8 s | 0 | 9 | ≈ 9.1 |
+| 20 s | 31 | 20 | ≈ 14.1 |
+
+Without the gap filling, the 4 s and 8 s breaks would each have been a single beat, and every later measure number would have been about 1.5 and 3 bars too low. With a 20 s break, Beat This! itself goes wrong: it adds a second beat about 0.12 s after most beats, from 1.8 s on, well before the break, because it looks at about 30 s of audio at once. Measure numbers there are wrong with or without filling. This is logged in `docs/accuracy.md`; the workaround is to transcribe each side of the silence separately. The 8 s version, with a pickup, was rendered in MuseScore 3.2.3: its own measure numbers (4 and 10 at the system starts) match `events.json`, and the break shows as measure rests.

@@ -101,6 +101,27 @@ def test_tempo_map_bars_and_pickup() -> None:
     assert numbered(waltz)[2:6] == [(1.0, 1, 1), (1.5, 1, 2), (2.0, 1, 3), (2.5, 2, 1)]
 
 
+def test_gaps_in_the_tracked_beats_are_filled() -> None:
+    """No beats through 20 s of silence: the bars still run on, so measures after it keep their
+    numbers. A skipped beat is restored; a slightly long beat (a slowdown) is kept."""
+    times = np.concatenate([np.arange(9) * 0.5, 24 + np.arange(13) * 0.5])
+    tm = beats.tempo_map(times, times[::4])
+    assert (24.0, 13, 1) in numbered(tm) and len(tm.beats) == 61
+    assert np.allclose(np.diff([b.time_s for b in tm.beats]), 0.5)
+    skipped = np.array([0, 0.5, 1.0, 2.0, 2.5, 3.0, 3.65, 4.15])
+    assert [b.time_s for b in beats.tempo_map(skipped, skipped[:1]).beats] == [
+        0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5,
+        3.0,
+        3.65,
+        4.15,
+    ]
+
+
 def test_first_downbeat_override() -> None:
     times = np.arange(20) * 0.5
     tm = beats.tempo_map(times, times[::4], first_downbeat=3.03)  # nearest beat: 3.0 s

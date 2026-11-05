@@ -97,4 +97,5 @@ How well DrumTx finds the beats and places hits on the grid (decision 0012; the 
 
 - **Wrong bar lines** are the main rhythm error. In about one clip in seven, every bar is shifted by a whole bar or by a beat. If bar 1 looks wrong, pass `--first-downbeat` with the time of the first downbeat. If the tempo looks halved or doubled, pass `--bpm`.
 - **Swing is written as straight 16ths.** A single swung 8th note in a beat stays on the 16th grid, not a triplet.
+- **Long silences.** Breaks of up to about 8 s keep the right bar numbers after them. Around a 20 s silence, the beat tracker adds spurious beats, so the bars after it are numbered wrong. Transcribe the parts on either side separately with `--start` and `--end`.
 - **The time signature is never detected.** Pass `--time-signature` for anything other than 4/4.
