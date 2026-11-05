@@ -4,8 +4,8 @@ Each stage's cache key covers the source file's SHA-256, the stage's name and ve
 it reads, and the keys of the stages it depends on. So changing a quantize option re-runs quantize
 and everything after it, and reuses the cached detection.
 
-- A cached stage (detect, track, quantize) loads its output from the cache when the key matches.
-- An uncached stage that others depend on (ingest) runs only when one of them has to run.
+- A cached stage (separate, detect, track) loads its output from the cache when the key matches.
+- An uncached stage that others depend on (ingest, quantize) runs only when one of them has to run.
 - An uncached stage that nothing depends on (render, report) always runs.
 
 The cache keeps only the newest entry per stage, so it cannot grow without limit.
@@ -26,7 +26,8 @@ import numpy as np
 
 from drumtx import beats, detect, ingest, models, render
 from drumtx.detect import Preset
-from drumtx.schema import CLASSES, DrumEvent, event_from_json, event_to_json
+from drumtx.quantize import GridOption, quantize
+from drumtx.schema import CLASSES, DrumEvent, QuantizedScore, event_from_json, event_to_json
 from drumtx.separate import SEPARATOR, Device, isolate_drums
 
 log = logging.getLogger("drumtx")
@@ -50,6 +51,7 @@ class Config:
     bpm: float | None = None
     beats_per_bar: int | None = None  # --time-signature N/4; None is the 4/4 default
     first_downbeat: float | None = None
+    grid: GridOption = "auto"
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -125,9 +127,9 @@ def _track_summary(ctx: RunContext, tracked: dict[str, list[float]]) -> str:
     return f"{len(b):,} beats{tempo}"
 
 
-def _render(
+def _quantize(
     ctx: RunContext, events: list[DrumEvent], tracked: dict[str, list[float]]
-) -> list[Path]:
+) -> QuantizedScore:
     cfg = ctx.config
     tempo_map = beats.tempo_map(
         np.array(tracked["beats"]),
@@ -137,9 +139,22 @@ def _render(
         first_downbeat=cfg.first_downbeat,
         time_signature_given=cfg.beats_per_bar is not None,
     )
+    return quantize(events, tempo_map, cfg.grid)
+
+
+def _quantize_summary(ctx: RunContext, score: QuantizedScore) -> str:
+    grids = {(q.measure, q.beat): q.grid for e in score.events if (q := e.quantized)}
+    triplets = sum(g == "triplet" for g in grids.values())
+    merged = sum("merged" in e.flags for e in score.events)
+    return f"grid {ctx.config.grid}: {triplets} of {len(grids)} beats in triplets, {merged} merged"
+
+
+def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> list[Path]:
+    """events.csv gets every detected hit; events.json the score, without merged-away hits."""
+    cfg = ctx.config
     csv_data = render.events_csv(events)
     doc = render.events_json(
-        events,
+        score,
         source={
             "file": cfg.input.name,
             "sha256": ctx.source_sha256,
@@ -156,6 +171,7 @@ def _render(
             "bpm": cfg.bpm,
             "time_signature": f"{cfg.beats_per_bar}/4" if cfg.beats_per_bar else None,
             "first_downbeat": cfg.first_downbeat,
+            "grid": cfg.grid,
         },
         models={
             "detector": cfg.model,
@@ -163,7 +179,6 @@ def _render(
             "separator": SEPARATOR if cfg.separate else None,
         },
         csv_sha256=hashlib.sha256(csv_data).hexdigest(),
-        tempo_map=tempo_map,
     )
     if not events:
         log.warning("No drum events detected.")
@@ -223,7 +238,7 @@ STAGES = [
         load=lambda data: [event_from_json(d) for d in json.loads(data)],
     ),
     # Raw beats only: the tempo map (with --bpm, --time-signature, --first-downbeat) is built when
-    # rendering, so changing those options never re-runs the network.
+    # quantizing, so changing those options never re-runs the network.
     Stage(
         "track",
         run=lambda ctx, audio: track_beats(audio, ctx.config.offline),
@@ -231,11 +246,19 @@ STAGES = [
         deps=("ingest",),
         params=("tracker_fingerprint",),
     ),
+    # Not cached: it takes milliseconds.
+    Stage(
+        "quantize",
+        run=_quantize,
+        summary=_quantize_summary,
+        deps=("detect", "track"),
+        cached=False,
+    ),
     Stage(
         "render",
         run=_render,
         summary=lambda ctx, paths: ", ".join(p.name for p in paths),
-        deps=("detect", "track"),
+        deps=("detect", "quantize"),
         cached=False,
     ),
 ]

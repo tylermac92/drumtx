@@ -51,12 +51,14 @@ def test_outputs(wav: Path, tmp_path: Path) -> None:
         {"time_s": 1.0, "measure": 1, "beat": 2},
     ]
     assert doc["models"]["beat_tracker"] == "beat-this-final0" and doc["measure_flags"] == []
-    assert all(e["quantized"] is None for e in doc["events"]) and doc["events"]
-    # The CSV holds the same events as the JSON, at the same precision.
+    assert all(e["quantized"] for e in doc["events"]) and doc["events"]
+    assert doc["settings"]["grid"] == "auto"
+    # The CSV holds every detected hit at the same precision; the JSON leaves out merged ones.
     rows = read_events_csv(out / "straight16.events.csv")
-    assert [(e.time_s, e.cls, e.confidence, e.velocity) for e in rows] == [
-        (e["time_s"], e["class"], e["confidence"], e["velocity"]) for e in doc["events"]
-    ]
+    csv_hits = {(e.time_s, e.cls, e.confidence, e.velocity) for e in rows}
+    json_hits = {(e["time_s"], e["class"], e["confidence"], e["velocity"]) for e in doc["events"]}
+    assert json_hits <= csv_hits
+    assert len(csv_hits - json_hits) >= sum("merged" in e["flags"] for e in doc["events"])
     assert min(e.time_s for e in rows) >= 0.5  # source-file times, inside the excerpt
 
 

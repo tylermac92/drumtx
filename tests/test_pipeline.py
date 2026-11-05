@@ -1,7 +1,7 @@
 """M1-2: stage orchestration, the stage cache, progress output and exit codes."""
 
 from collections import Counter
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -13,11 +13,6 @@ from typer.testing import CliRunner
 from drumtx import pipeline
 from drumtx.cli import app
 from drumtx.pipeline import Config, RunContext, Stage
-
-
-@dataclass(frozen=True)
-class FakeConfig(Config):
-    grid: str = "auto"  # stands in for a quantize option until M3-2 adds the real one
 
 
 def fake_stages(calls: Counter[str]) -> list[Stage]:
@@ -54,7 +49,7 @@ def runs(config: Config, stages: list[Stage], calls: Counter[str]) -> dict[str, 
 def test_cache_skips_unchanged_stages(audio: Path, tmp_path: Path) -> None:
     calls: Counter[str] = Counter()
     stages = fake_stages(calls)
-    config = FakeConfig(input=audio, out_dir=tmp_path / "out")
+    config = Config(input=audio, out_dir=tmp_path / "out")
     everything = {"ingest": 1, "detect": 1, "quantize": 1, "render": 1}
 
     assert runs(config, stages, calls) == everything
@@ -72,16 +67,16 @@ def test_cache_skips_unchanged_stages(audio: Path, tmp_path: Path) -> None:
 
 def test_cached_output_is_passed_on(audio: Path, tmp_path: Path) -> None:
     calls: Counter[str] = Counter()
-    config = FakeConfig(input=audio, out_dir=tmp_path / "out")
+    config = Config(input=audio, out_dir=tmp_path / "out")
     first = pipeline.run(RunContext.create(config), fake_stages(calls))
-    second = pipeline.run(RunContext.create(replace(config, grid="x")), fake_stages(calls))
+    second = pipeline.run(RunContext.create(replace(config, grid="triplet")), fake_stages(calls))
     assert second["quantize"][1] == first["detect"]
 
 
 def test_cache_stays_inside_output_dir(audio: Path, tmp_path: Path) -> None:
     calls: Counter[str] = Counter()
     pipeline.run(
-        RunContext.create(FakeConfig(input=audio, out_dir=tmp_path / "out")), fake_stages(calls)
+        RunContext.create(Config(input=audio, out_dir=tmp_path / "out")), fake_stages(calls)
     )
     written = {p for p in tmp_path.rglob("*") if p.is_file()} - {audio}
     assert written and all(p.is_relative_to(tmp_path / "out" / ".drumtx-cache") for p in written)
@@ -95,10 +90,11 @@ def test_transcribe_progress(audio: Path, tmp_path: Path) -> None:
         app, ["transcribe", str(audio), "--model", "baseline", "-o", str(tmp_path / "out")]
     )
     assert result.exit_code == 0, result.output
-    assert "[1/4] Ingest     in.wav  0:03, stereo" in result.stderr
-    assert "[2/4] Detect     0 events (kick 0, snare 0, hihat 0, tom 0, cymbal 0)" in result.stderr
-    assert "[3/4] Track      6 beats, about 120 BPM" in result.stderr  # conftest's stand-in
-    assert "[4/4] Render     in.events.json, in.events.csv" in result.stderr
+    assert "[1/5] Ingest     in.wav  0:03, stereo" in result.stderr
+    assert "[2/5] Detect     0 events (kick 0, snare 0, hihat 0, tom 0, cymbal 0)" in result.stderr
+    assert "[3/5] Track      6 beats, about 120 BPM" in result.stderr  # conftest's stand-in
+    assert "[4/5] Quantize   grid auto: 0 of 0 beats in triplets, 0 merged" in result.stderr
+    assert "[5/5] Render     in.events.json, in.events.csv" in result.stderr
     assert result.stdout == ""
 
 

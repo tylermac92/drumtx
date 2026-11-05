@@ -81,7 +81,7 @@ class MeasureFlags:
 @dataclass(frozen=True)
 class QuantizedScore:
     tempo_map: TempoMap
-    events: tuple[DrumEvent, ...]  # sorted by time; every event has a position
+    events: tuple[DrumEvent, ...]  # sorted by time; positioned unless there are under two beats
     measure_flags: tuple[MeasureFlags, ...] = ()  # flagged measures only
 
 

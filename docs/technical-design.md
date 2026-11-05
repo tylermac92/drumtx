@@ -246,8 +246,9 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - Collisions (same class, same slot) are merged, keeping the highest confidence. This merge is recorded in the event's flags rather than silently discarded.
    - Each event stores a residual: the distance in milliseconds from its snapped position, and that distance as a fraction of the grid step. The largest possible residual is half a step, which is 37.5 ms for 16ths at 200 BPM but 125 ms at 60 BPM, so flags use the fraction.
    - Positions are 1-based: `measure`, `beat`, and `slot` start at 1. A pickup measure before the first downbeat is measure 0.
-   - Events before the first tracked beat or after the last one are placed by extending the nearest beat interval.
-6. **Render.** MusicXML and MIDI are written from the quantized score. JSON and CSV are written from the full event list.
+   - Events before the first tracked beat or after the last one are placed by extending the nearest beat interval. Events that would fall before measure 0 cannot be numbered; they are left out of the score with a warning (they stay in `events.csv`).
+   - Implemented in `src/drumtx/quantize.py` (M3-2). The triplet penalty is 0.05 beats of total snapping error; on the development score subset with the reference beats, 88–90% of found hits get the reference position for any penalty from 0 to 0.1. Most of the rest are single swung 8th notes, which stay on 16ths (swing is post-MVP).
+6. **Render.** MusicXML, MIDI and JSON are written from the quantized score. The CSV is written from the full event list, so merged hits can be restored by editing it.
 7. **Report.** Measures are flagged when:
    - they contain uncertain events (confidence below the review threshold);
    - they contain more than one event with a residual above 25% of the grid step;

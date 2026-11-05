@@ -86,7 +86,7 @@ def test_baseline_offline_needs_only_the_beat_tracker(
     monkeypatch.setitem(models.REGISTRY, "beat-this-final0", tracker)
     models.cache_dir().mkdir(parents=True)
     (models.cache_dir() / tracker.file).write_bytes((tmp_path / "bt.onnx").read_bytes())
-    assert transcribe(wav, "--model", "baseline", "--offline", "-q") == (0, "")
+    assert transcribe(wav, "--model", "baseline", "--offline", "-q")[0] == 0
     assert [p.name for p in models.cache_dir().iterdir()] == [tracker.file]  # nothing downloaded
 
 
