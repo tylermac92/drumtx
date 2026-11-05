@@ -65,7 +65,7 @@ xvfb-run -a mscore3 -o groove.mid spikes/m0-6/groove_custom.musicxml
 The writer follows the spike, with these choices:
 
 - **Measures** run from measure 1 (or 0, when the pickup has hits) to the last measure of the tempo map or of the hits, so the score covers the audio. Proper pickup and trailing measures are M4-4.
-- **One note or rest per grid slot.** Each beat is four 16ths or an 8th-note triplet (with `<time-modification>` and a bracketed `<tuplet>`). A beat with no hits in a voice is a quarter rest; a measure with none, a measure rest. Beams, longer notes and fewer rests are M4-2.
+- **Grid per beat.** Each beat is on a 16th or an 8th-note triplet grid (with `<time-modification>` and a `<tuplet>`). M4-1 wrote one note or rest per slot. M4-2 added readability: notes last until the next hit in the beat, beams per beat with 16th hooks, consolidated rests, and a triplet bracket only when the group isn't three beamed notes. The rules, and the check on ten development-set clips, are in `docs/notation-checklist.md`.
 - **Voice 2 only where it has hits.** Voice 1 always fills the measure.
 - **Instrument IDs are per class** (`P1-kick`), so a mapping that gives two classes the same MIDI note still writes unique IDs.
 - **Tempo:** one `<metronome>` and `<sound tempo>`, the median beat interval rounded to whole BPM. None without a tempo map.

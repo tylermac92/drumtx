@@ -17,11 +17,12 @@ from drumtx import mapping
 from drumtx.beats import tempo_map
 from drumtx.cli import app
 from drumtx.ingest import SAMPLE_RATE
-from drumtx.musicxml import DIVISIONS, musicxml_bytes
+from drumtx.musicxml import DIVISIONS, TYPES, _beat, _Item, _measure, musicxml_bytes
 from drumtx.quantize import quantize
 from drumtx.schema import (
     CLASSES,
     Beat,
+    DrumClass,
     DrumEvent,
     QuantizedScore,
     TempoMap,
@@ -174,3 +175,78 @@ def test_transcribe_writes_musicxml(xsd: Any, tmp_path: Path) -> None:
         (out / name).unlink()
     result = CliRunner().invoke(app, args)  # only in.musicxml is left, and it is not overwritten
     assert result.exit_code == 2 and "in.musicxml already exists" in result.stderr
+
+
+def show(items: list[_Item]) -> list[str]:
+    """Each item as rest or note, type, dots, triplet, and beams: "16 begin/forward hook"."""
+    out = []
+    for x in items:
+        kind, dots = TYPES[x.duration, x.triplet]
+        name = ("" if x.classes else "rest ") + kind + "." * dots + " 3" * x.triplet
+        out.append(" ".join([name, "/".join(x.beams)]).strip())
+    return out
+
+
+@pytest.mark.parametrize(
+    ("slots", "want"),
+    [
+        ((1,), ["quarter"]),
+        ((1, 3), ["eighth begin", "eighth end"]),
+        ((2,), ["rest 16th", "eighth."]),
+        ((3,), ["rest eighth", "eighth"]),
+        ((4,), ["rest eighth.", "16th"]),
+        ((1, 4), ["eighth. begin", "16th end/backward hook"]),
+        ((2, 4), ["rest 16th", "eighth begin", "16th end/backward hook"]),
+        ((1, 2, 4), ["16th begin/forward hook", "eighth continue", "16th end/backward hook"]),
+        ((1, 3, 4), ["eighth begin", "16th continue/begin", "16th end/end"]),
+        (
+            (1, 2, 3, 4),
+            [
+                "16th begin/begin",
+                "16th continue/continue",
+                "16th continue/continue",
+                "16th end/end",
+            ],
+        ),
+    ],
+)
+def test_16th_beats(slots: tuple[int, ...], want: list[str]) -> None:
+    """Notes last until the next hit in the beat; a rest fills the start; beams per beat."""
+    assert show(_beat({s: ["snare"] for s in slots}, "16th")) == want
+
+
+@pytest.mark.parametrize(
+    ("slots", "want", "bracket"),
+    [
+        ((1,), ["quarter"], None),  # one hit filling the beat: no triplet at all
+        ((1, 2, 3), ["eighth 3 begin", "eighth 3 continue", "eighth 3 end"], "no"),
+        ((1, 3), ["quarter 3", "eighth 3"], "yes"),
+        ((1, 2), ["eighth 3", "quarter 3"], "yes"),
+        ((2, 3), ["rest eighth 3", "eighth 3 begin", "eighth 3 end"], "yes"),
+        ((3,), ["rest quarter 3", "eighth 3"], "yes"),
+    ],
+)
+def test_triplet_beats(slots: tuple[int, ...], want: list[str], bracket: str | None) -> None:
+    """Three beamed notes show only the 3; with a rest or a quarter, the bracket too."""
+    items = _beat({s: ["hihat"] for s in slots}, "triplet")
+    assert show(items) == want
+    assert (items[0].tuplet or {}).get("bracket") == bracket
+    assert (items[-1].tuplet or {}).get("type") == ("stop" if bracket else None)
+
+
+@pytest.mark.parametrize(
+    ("per_bar", "beats", "want"),
+    [
+        (4, (1,), ["quarter", "rest quarter", "rest half"]),
+        (4, (2,), ["rest quarter", "quarter", "rest half"]),
+        (4, (4,), ["rest half", "rest quarter", "quarter"]),
+        (4, (1, 4), ["quarter", "rest quarter", "rest quarter", "quarter"]),  # never across 2–3
+        (3, (3,), ["rest half", "quarter"]),
+        (5, (1,), ["quarter", "rest quarter", "rest half", "rest quarter"]),
+    ],
+)
+def test_empty_beats_are_consolidated(
+    per_bar: int, beats: tuple[int, ...], want: list[str]
+) -> None:
+    hits: dict[int, dict[int, list[DrumClass]]] = {b: {1: ["kick"]} for b in beats}
+    assert show(_measure(hits, {b: "16th" for b in beats}, per_bar)) == want
