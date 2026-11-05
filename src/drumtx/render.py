@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from drumtx.errors import InputError
-from drumtx.schema import CSV_COLUMNS, SCHEMA_VERSION, DrumEvent, TempoMap, event_to_json
+from drumtx.schema import CSV_COLUMNS, SCHEMA_VERSION, DrumEvent, QuantizedScore, event_to_json
 
 
 def event_paths(out_dir: Path, stem: str) -> tuple[Path, Path]:
@@ -51,23 +51,22 @@ def events_csv(events: list[DrumEvent]) -> bytes:
 
 
 def events_json(
-    events: list[DrumEvent],
+    score: QuantizedScore,
     source: dict[str, Any],
     settings: dict[str, Any],
     models: dict[str, str | None],
     csv_sha256: str | None,
-    tempo_map: TempoMap,
 ) -> dict[str, Any]:
-    """events.json (schema v1) with the tempo map; nothing is quantized yet (M3-2)."""
+    """events.json (schema v1): the tempo map and the score's hits with their positions."""
     return {
         "schema_version": SCHEMA_VERSION,
         "source": source,
         "settings": settings,
         "models": models,
         "csv_sha256": csv_sha256,
-        "tempo_map": dataclasses.asdict(tempo_map),
-        "events": [event_to_json(e) for e in events],
-        "measure_flags": [],
+        "tempo_map": dataclasses.asdict(score.tempo_map),
+        "events": [event_to_json(e) for e in score.events],
+        "measure_flags": [dataclasses.asdict(m) for m in score.measure_flags],
     }
 
 

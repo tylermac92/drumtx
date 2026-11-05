@@ -3,7 +3,7 @@
 DrumTx writes every run's detected hits to two files, `<name>.events.json` and `<name>.events.csv`.
 
 - **`events.json`** is the authoritative record of a run. Its JSON Schema is [`src/drumtx/events-v1.schema.json`](../../src/drumtx/events-v1.schema.json), which ships inside the package.
-- **`events.csv`** holds the same hits in four columns, for editing in a spreadsheet.
+- **`events.csv`** holds the same hits in four columns, for editing in a spreadsheet. It keeps every detected hit, including the few that `events.json` leaves out: hits merged into another in the same slot, and hits before measure 0 (see [Events](#events)).
 
 The Python types for these contracts are in [`src/drumtx/schema.py`](../../src/drumtx/schema.py): `DrumEvent`, `Position`, `TempoMap` (with `Beat` and `TimeSignature`), `MeasureFlags` and `QuantizedScore`. Their field names match the JSON keys, with one exception: `DrumEvent.cls` is `class` in JSON and CSV. Tests keep the types, the schema and the examples in step.
 
@@ -38,7 +38,7 @@ These files are validated in `tests/test_schema.py`. They encode the two-bar gro
 | `models.separator` | string or `null` | Separation model ID; `null` without `--separate`. |
 | `csv_sha256` | hex string or `null` | SHA-256 of `events.csv` as `transcribe` wrote it, so a hand-edited CSV is never overwritten. `null` when no CSV was written. `render` keeps this value. |
 | `tempo_map` | object | See [Tempo map](#tempo-map). |
-| `events` | list | One entry per hit, sorted by time. See [Events](#events). |
+| `events` | list | One entry per hit in the score, sorted by time. Hits merged into another (flag `merged`) and hits before measure 0, which cannot be numbered, are left out. See [Events](#events). |
 | `measure_flags` | list | Measures to review. Only flagged measures are listed. See [Flags](#flags). |
 
 ### Tempo map
@@ -66,7 +66,7 @@ Storing the measure and beat number of every beat, rather than a single meter, i
 | `quantized.grid` | `16th` or `triplet` | That beat's grid. |
 | `quantized.slot` | integer | Position within the beat: 1–4 for `16th`, 1–3 for `triplet`. |
 | `quantized.residual_ms` | number | The hit's time minus its snapped time. Positive means late. |
-| `quantized.residual_frac` | −0.5 to 0.5 | `residual_ms` as a fraction of the grid step, so the same value means the same thing at any tempo. |
+| `quantized.residual_frac` | −0.5 to 0.5 | `residual_ms` as a fraction of the grid step, so the same value means the same thing at any tempo. For a hit just before a beat, the step is that of the beat before. |
 | `flags` | list | Event flags; usually empty. See [Flags](#flags). |
 
 ### Flags
