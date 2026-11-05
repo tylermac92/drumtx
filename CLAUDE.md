@@ -15,8 +15,8 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M4-4, through PR #35.
-- **In review: M4-5, compatibility testing.** Then M5-1 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M4-5, through PR #36.
+- **In review: M5-1, the review report** (`review.build_report`, the report stage in `pipeline.py`). Then M5-2 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
@@ -72,7 +72,7 @@ uv run --python 3.11 pytest -q
 | `detect.py` | ADTOF model (the default) or the classical baseline. The presets are in `presets/adtof.json`. |
 | `beats.py` | Beat This! tracker and `tempo_map` |
 | `quantize.py` | Grid per beat, merges, residuals |
-| `review.py` | Flags and their thresholds |
+| `review.py` | Flags and their thresholds; the review report |
 | `midi.py` | MIDI writer (decision 0011) |
 | `musicxml.py` | MusicXML writer (decision 0007) |
 | `mapping.py` | Instrument mapping (`mapping.toml`) |

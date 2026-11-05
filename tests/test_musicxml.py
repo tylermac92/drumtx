@@ -266,7 +266,7 @@ def test_transcribe_writes_musicxml(xsd: Any, tmp_path: Path) -> None:
     root = check(xsd, (out / "in.musicxml").read_bytes())
     events = json.loads((out / "in.events.json").read_text())["events"]
     assert len(root.findall(".//note/unpitched")) == len(events) > 0
-    for name in ("in.events.json", "in.events.csv", "in.mid"):
+    for name in ("in.events.json", "in.events.csv", "in.mid", "in.report.md"):
         (out / name).unlink()
     result = CliRunner().invoke(app, args)  # only in.musicxml is left, and it is not overwritten
     assert result.exit_code == 2 and "in.musicxml already exists" in result.stderr

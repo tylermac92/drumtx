@@ -170,7 +170,7 @@ Note: automatic transcription contains errors. Check flagged measures first.
 | `<name>.mid` | Standard MIDI File type 1, channel 10, General MIDI drum notes | Tempo changes at every beat, so quantized notes line up with the original audio in a DAW. `--midi-timing performance` writes raw times instead. A lead-in from 0 s to the first beat makes the first bar a pickup (decision 0011). |
 | `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model IDs, tempo map, events with confidence, velocity, quantized position, and review flags, per-measure review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
 | `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` (`docs/schema/events-v1.md`) | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
-| `<name>.report.md` | Markdown | Settings, tempo summary, per-class counts, flagged measures with timestamps, known limitations. |
+| `<name>.report.md` | Markdown | Summary (source, tempo and its stability, time signature, first downbeat, share of measures flagged), per-class counts with the MIDI note of each class, flagged measures with their start and end in source-file seconds and the reasons, suggested next steps, settings and model IDs, and a limitations note. Tables are padded, so it reads as plain text too. Written by `review.build_report` (M5-1). |
 | `<name>.preview.wav` | WAV, from `drumtx preview` only | Original audio plus synthesized hits (drum sounds generated in code). |
 
 ### Default instrument mapping
@@ -257,6 +257,8 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - a collision merge happened in them.
 
    The flag thresholds are configurable (`review.Thresholds`, M3-3) and tuned in M5. The flags are computed with the quantized score, so they are in `events.json` as well as the report. With the defaults, 67% of development measures are flagged (uncertain 40%, off-grid 42%, merged 15%, tempo 1%), too many to guide a review; M5-4 tunes them.
+
+   The report stage (M5-1) writes `<name>.report.md` on every run. A flagged measure's start and end are the times of its first beat and of the next measure's, past the tracked beats extending the end intervals as the quantizer does. Spot check on 5 development clips with the ADTOF model (MDB Drums 80sRock drum-only and full mix, BebopJazz drum-only; two E-GMD grooves): of 182 flagged measures, every hit placed in a measure lies inside its reported times (within half a 16th, since early hits snap forward), and every start is within 70 ms of a reference downbeat (median 10–30 ms).
 
 `drumtx render` re-enters this flow at step 5, using a provided JSON or CSV file. An edited CSV has no tempo map, so `render` takes the tempo map from the sibling JSON file (`<name>.events.json`), adjusted by `--first-downbeat` or `--time-signature` when given. `render` then rewrites `events.json` as described in §4.
 

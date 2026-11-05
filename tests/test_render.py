@@ -60,6 +60,7 @@ def test_outputs(wav: Path, tmp_path: Path) -> None:
     assert json_hits <= csv_hits
     assert len(csv_hits - json_hits) >= sum("merged" in e["flags"] for e in doc["events"])
     assert min(e.time_s for e in rows) >= 0.5  # source-file times, inside the excerpt
+    assert "excerpt 0:00.50 to " in (out / "straight16.report.md").read_text()
 
 
 def test_no_overwrite_without_force(wav: Path, tmp_path: Path) -> None:
