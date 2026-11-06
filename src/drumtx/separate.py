@@ -5,28 +5,16 @@ is used. The weights are loaded from safetensors (drumtx.models); the drum stem 
 for detection only. Beat tracking stays on the full mix (Technical Design Document §7).
 """
 
-import sys
-from importlib.metadata import requires
-from pathlib import Path
 from typing import Literal
 
 import numpy as np
 
 from drumtx import models
-from drumtx.errors import MissingDependencyError
+from drumtx.errors import MissingDependencyError, install_hint
 from drumtx.ingest import AudioBuffer
 
 Device = Literal["cpu", "cuda"]
 SEPARATOR = "umxl-drums"
-
-
-def install_hint() -> str:
-    """The exact command that adds the extra to this installation."""
-    extra = [r.split(";")[0].strip() for r in requires("drumtx") or [] if "separation" in r]
-    specs = " ".join(f'"{r}"' for r in extra)
-    if "pipx" in Path(sys.prefix).parts:
-        return f"pipx inject drumtx {specs}"
-    return f'"{sys.executable}" -m pip install {specs}'
 
 
 def check_installed() -> None:
@@ -37,7 +25,7 @@ def check_installed() -> None:
     except ImportError as e:
         raise MissingDependencyError(
             f"--separate needs the separation extra ({e.name} is missing). Install it with:\n"
-            f"  {install_hint()}"
+            f"  {install_hint('separation')}"
         ) from e
 
 

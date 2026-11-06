@@ -88,6 +88,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 | `--start SEC`, `--end SEC` | whole file | Transcribe an excerpt. |
 | `--max-duration SEC` | 600 | Longest audio accepted (the selected excerpt, if any). |
 | `--mark-uncertain` | off | Color notes flagged `uncertain` (confidence below the review threshold) red in the MusicXML. |
+| `--plot` | off | Also write `<name>.plot.png`. Needs the `[plot]` extra (matplotlib); without it, exit code 3 with the install command. |
 | `--midi-timing` | `quantized` | `quantized` (on grid, aligned to audio through the tempo map) or `performance` (raw times). |
 | `--device` | `cpu` | `cpu` or `cuda`, for `--separate` only. Detection always runs on CPU in the MVP. |
 | `--model ID` | registry default | Detection model. `baseline` selects the classical detector, which needs no download (beat tracking still needs its model). |
@@ -98,7 +99,7 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 ### Key `render` options
 
-`render` accepts `--formats` (default `musicxml,midi,report`), `--grid`, `--mark-uncertain`, `--midi-timing`, and `--mapping`, plus two rhythm overrides that work on the stored beat times without the audio: `--first-downbeat SEC` and `--time-signature N/4`.
+`render` accepts `--formats` (default `musicxml,midi,report`), `--grid`, `--mark-uncertain`, `--midi-timing`, `--mapping`, and `--plot`, plus two rhythm overrides that work on the stored beat times without the audio: `--first-downbeat SEC` and `--time-signature N/4`.
 
 `render` never modifies `events.csv`. It overwrites the score, MIDI, and report, and rewrites `events.json` from the event list it rendered, so the tempo map, quantized positions, and flags there match the new score. The rewrite keeps the source metadata and the CSV hash recorded by `transcribe`, so edit protection still works. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
 
@@ -182,6 +183,7 @@ Note: automatic transcription contains errors. Check flagged measures first.
 | `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model IDs, tempo map, events with confidence, velocity, quantized position, and review flags, per-measure review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
 | `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` (`docs/schema/events-v1.md`) | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
 | `<name>.report.md` | Markdown | Summary (source, tempo and its stability, time signature, first downbeat, share of measures flagged), per-class counts with the MIDI note of each class, flagged measures with their start and end in source-file seconds and the reasons, suggested next steps, settings and model IDs, and a limitations note. Tables are padded, so it reads as plain text too. Written by `review.build_report` (M5-1). |
+| `<name>.plot.png` | PNG, with `--plot` only | A piano roll: one row per class, a tick per hit (red when uncertain), bar lines with measure numbers, and flagged measures shaded and labeled with their flags. 100 dpi, one inch per 4 seconds (a 10-minute piece is 15,000 pixels wide). Drawn by `plot.write_plot` on a matplotlib `Figure`, so no display is needed (M5-6). |
 | `<name>.preview.wav` | WAV, from `drumtx preview` only | The whole source file at 44.1 kHz, 16-bit, turned down by about 10 dB (`synth.ORIGINAL_GAIN`), plus the hits synthesized in code at their event times and velocities (`synth.preview`, M5-2). The mix is scaled down as a whole rather than clipped. Mono, or stereo with `--split-stereo`. |
 
 ### Default instrument mapping

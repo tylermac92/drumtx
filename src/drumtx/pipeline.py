@@ -24,7 +24,7 @@ from typing import Any, Literal
 
 import numpy as np
 
-from drumtx import beats, detect, ingest, mapping, models, render, review
+from drumtx import beats, detect, ingest, mapping, models, plot, render, review
 from drumtx.detect import Preset
 from drumtx.errors import InputError
 from drumtx.midi import MidiTiming, midi_bytes
@@ -66,6 +66,7 @@ class Config:
     midi_timing: MidiTiming = "quantized"
     mapping: Path | None = None  # --mapping; None is the default mapping.toml
     mark_uncertain: bool = False
+    plot: bool = False  # --plot: also <name>.plot.png (the plot extra)
     device: Device = "cpu"  # for --separate only; does not change the stem
     no_cache: bool = False
     force: bool = False
@@ -211,12 +212,17 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi, musicxml)
 
 
-def _report(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> tuple[Path, int]:
-    """The report's path, and the number of flagged measures for the progress line."""
-    notes = {cls: i.midi_note for cls, i in mapping.load(ctx.config.mapping).items()}
+def _report(
+    ctx: RunContext, events: list[DrumEvent], score: QuantizedScore
+) -> tuple[list[Path], int]:
+    """The report (and with --plot, the plot), and the number of flagged measures."""
+    cfg = ctx.config
+    notes = {cls: i.midi_note for cls, i in mapping.load(cfg.mapping).items()}
     text = review.build_report(score, events, **_metadata(ctx), midi_notes=notes)
-    path = render.write_report(ctx.config.out_dir, ctx.config.input.stem, text)
-    return path, len(score.measure_flags)
+    paths = [render.write_report(cfg.out_dir, cfg.input.stem, text)]
+    if cfg.plot:
+        paths.append(plot.write_plot(score, render.plot_path(cfg.out_dir, cfg.input.stem)))
+    return paths, len(score.measure_flags)
 
 
 RenderFormat = Literal["musicxml", "midi", "report"]
@@ -229,6 +235,7 @@ def rerender(
     midi_timing: MidiTiming = "quantized",
     mapping_path: Path | None = None,
     mark_uncertain: bool = False,
+    plot_png: bool = False,
     first_downbeat: float | None = None,
     beats_per_bar: int | None = None,
 ) -> list[Path]:
@@ -284,6 +291,8 @@ def rerender(
     if "report" in formats:
         text = review.build_report(score, events, **meta, midi_notes=notes)
         paths.append(render.write_report(out_dir, stem, text))
+    if plot_png:
+        paths.append(plot.write_plot(score, render.plot_path(out_dir, stem)))
     return paths
 
 
@@ -366,7 +375,9 @@ STAGES = [
     Stage(
         "report",
         run=_report,
-        summary=lambda ctx, out: f"{out[0].name}: {out[1]} measures flagged for review",
+        summary=lambda ctx, out: (
+            f"{', '.join(p.name for p in out[0])}: {out[1]} measures flagged for review"
+        ),
         deps=("detect", "quantize"),
         cached=False,
     ),

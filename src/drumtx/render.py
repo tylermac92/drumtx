@@ -23,10 +23,19 @@ def report_path(out_dir: Path, stem: str) -> Path:
     return out_dir / f"{stem}.report.md"
 
 
+def plot_path(out_dir: Path, stem: str) -> Path:
+    return out_dir / f"{stem}.plot.png"
+
+
 def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
     """Refuse to start a run whose outputs would overwrite files it must not."""
     json_path, csv_path = event_paths(out_dir, stem)
-    others = (out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml", report_path(out_dir, stem))
+    others = (
+        out_dir / f"{stem}.mid",
+        out_dir / f"{stem}.musicxml",
+        report_path(out_dir, stem),
+        plot_path(out_dir, stem),
+    )
     existing = [p for p in (json_path, csv_path, *others) if p.exists()]
     if existing and not force:
         names = ", ".join(p.name for p in existing)
