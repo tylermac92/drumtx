@@ -2,7 +2,7 @@
 
 Command-line drum transcription from audio to editable notation. A personal project; see `docs/` for the brief, design, and milestone plan. The output formats (`events.json`, `events.csv`, the instrument mapping) are specified in `docs/schema/events-v1.md`.
 
-**Status:** M3 (tempo, quantization and MIDI) is done, and so is M4 (MusicXML). `drumtx transcribe` writes `events.json`, `events.csv`, a MIDI file and a MusicXML file; `evaluate` and `models` work. `--mark-uncertain` colors doubtful notes red. Every development-set transcription opens in MuseScore (`docs/compatibility.md`). The review report, `render` and `preview` (M5) are next. Progress notes for contributors are in `CLAUDE.md`.
+**Status:** M3 (tempo, quantization and MIDI) is done, and so is M4 (MusicXML). `drumtx transcribe` writes `events.json`, `events.csv`, a MIDI file, a MusicXML file and a review report (`report.md`, M5-1); `evaluate` and `models` work. `--mark-uncertain` colors doubtful notes red. Every development-set transcription opens in MuseScore (`docs/compatibility.md`). `render` and `preview` (M5) are next. Progress notes for contributors are in `CLAUDE.md`.
 
 ## Install
 

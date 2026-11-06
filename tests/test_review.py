@@ -13,7 +13,7 @@ from drumtx.beats import tempo_map
 from drumtx.cli import app
 from drumtx.ingest import SAMPLE_RATE
 from drumtx.quantize import quantize
-from drumtx.schema import DrumEvent, MeasureFlags, QuantizedScore
+from drumtx.schema import DrumClass, DrumEvent, MeasureFlags, QuantizedScore
 from drumtx.synth import render
 
 runner = CliRunner()
@@ -90,3 +90,57 @@ def test_flags_in_events_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     snares = [e for e in doc["events"] if e["class"] == "snare"]
     assert snares and all(e["flags"] == ["uncertain"] for e in doc["events"])
     assert {"measure": 1, "flags": ["uncertain"]} in doc["measure_flags"]
+    report = (out / "in.report.md").read_text()
+    assert "| 0:00.00 | 0:02.00 |" in report  # measure 1, from the stand-in tracker's beats
+
+
+# M5-1: the review report
+
+
+def report(score: QuantizedScore, events: list[DrumEvent] | None = None) -> str:
+    source = {"file": "song.wav", "duration_s": 8.0, "start_s": None, "end_s": None}
+    notes: dict[DrumClass, int] = {"kick": 36, "snare": 38, "hihat": 42, "tom": 47, "cymbal": 49}
+    events = list(score.events) if events is None else events
+    return review.build_report(score, events, source, {"grid": "auto"}, {"detector": "x"}, notes)
+
+
+def test_measure_times() -> None:
+    t = 1 + np.arange(16) * 0.5  # bar 1 at 1 s
+    tm = tempo_map(t, t[::4])
+    assert review.measure_times(tm, 1) == (1.0, 3.0)
+    assert review.measure_times(tm, 5) == (9.0, 11.0)  # past the last beat (8.5 s)
+    assert review.measure_times(tm, 0) == (0.0, 1.0)  # the pickup starts at 0 s at the earliest
+
+
+def test_report_lists_flagged_measures_with_times() -> None:
+    text = report(flagged([4, 5, 8], confidence=0.45))
+    assert "| 2       | 0:02.00 | 0:04.00 | 2 uncertain |" in text
+    assert "| 3       | 0:04.00 | 0:06.00 | 1 uncertain |" in text
+    assert "| snare  | 38        | 3        | 3            | 3         |" in text
+    assert "about 120 BPM (estimated), stable: 100% of beats" in text
+    assert "**Flagged:** 2 of 4 measures" in text
+    for heading in ("Summary", "Hits per class", "Suggested next steps", "Settings", "Limitations"):
+        assert f"\n## {heading}\n" in text
+    assert "drumtx preview song.wav song.events.json --split-stereo" in text
+
+
+def test_report_reasons() -> None:
+    lengths = np.full(16, 0.5)
+    lengths[4:8] = 0.56
+    t = np.concatenate([[0], np.cumsum(lengths)])
+    tempo = review.flag(quantize([DrumEvent(0.0, "kick", 0.9, 100)], tempo_map(t, t[::4])))
+    assert "| 2       | 0:02.00 | 0:04.24 | tempo 107 BPM |" in report(tempo)
+    beat_s = 0.5
+    t = np.arange(16) * beat_s
+    merged_events = [DrumEvent(2.0, "snare", 0.9, 100), DrumEvent(2.04, "snare", 0.7, 100)]
+    merged = review.flag(quantize(merged_events, tempo_map(t, t[::4])))
+    text = report(merged, merged_events)
+    assert "| 2       | 0:02.00 | 0:04.00 | 1 merged |" in text
+    assert "| snare  | 38        | 2        | 1            | 0         |" in text
+    assert "2 off the grid" in report(flagged([8.075, 9.075]))
+
+
+def test_report_without_beats() -> None:
+    score = quantize([DrumEvent(1.0, "kick", 0.9, 100)], tempo_map(np.array([1.0]), np.array([])))
+    text = report(score)
+    assert "not found (fewer than two beats)" in text and "No measures are flagged" in text

@@ -1,5 +1,5 @@
-"""Output files (Technical Design Document §5). So far: events.json, events.csv, the MIDI
-file and the MusicXML file.
+"""Output files (Technical Design Document §5): events.json, events.csv, the MIDI file, the
+MusicXML file and the review report.
 
 `transcribe` never overwrites outputs without --force, and never overwrites an events.csv that was
 edited after it was written: its SHA-256 at writing time is stored in events.json.
@@ -19,10 +19,14 @@ def event_paths(out_dir: Path, stem: str) -> tuple[Path, Path]:
     return out_dir / f"{stem}.events.json", out_dir / f"{stem}.events.csv"
 
 
+def report_path(out_dir: Path, stem: str) -> Path:
+    return out_dir / f"{stem}.report.md"
+
+
 def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
     """Refuse to start a run whose outputs would overwrite files it must not."""
     json_path, csv_path = event_paths(out_dir, stem)
-    others = (out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml")
+    others = (out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml", report_path(out_dir, stem))
     existing = [p for p in (json_path, csv_path, *others) if p.exists()]
     if existing and not force:
         names = ", ".join(p.name for p in existing)
@@ -86,7 +90,18 @@ def write_outputs(
         (csv_path, csv_data),
         (json_path, (json.dumps(doc, indent=2) + "\n").encode()),
     ):
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_bytes(data)
-        tmp.replace(path)
+        _replace(path, data)
     return [json_path, csv_path, midi_path, musicxml_path]
+
+
+def write_report(out_dir: Path, stem: str, text: str) -> Path:
+    path = report_path(out_dir, stem)
+    _replace(path, text.encode())
+    return path
+
+
+def _replace(path: Path, data: bytes) -> None:
+    """Write atomically."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)

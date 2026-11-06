@@ -151,26 +151,21 @@ def _quantize_summary(ctx: RunContext, score: QuantizedScore) -> str:
     grids = {(q.measure, q.beat): q.grid for e in score.events if (q := e.quantized)}
     triplets = sum(g == "triplet" for g in grids.values())
     merged = sum("merged" in e.flags for e in score.events)
-    return (
-        f"grid {ctx.config.grid}: {triplets} of {len(grids)} beats in triplets, {merged} merged; "
-        f"{len(score.measure_flags)} measures flagged for review"
-    )
+    return f"grid {ctx.config.grid}: {triplets} of {len(grids)} beats in triplets, {merged} merged"
 
 
-def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> list[Path]:
-    """events.csv gets every detected hit; events.json the score, without merged-away hits."""
+def _metadata(ctx: RunContext) -> dict[str, Any]:
+    """The source, settings and models sections of events.json, also used by the report."""
     cfg = ctx.config
-    csv_data = render.events_csv(events)
-    doc = render.events_json(
-        score,
-        source={
+    return {
+        "source": {
             "file": cfg.input.name,
             "sha256": ctx.source_sha256,
             "duration_s": ingest.source_duration(cfg.input),  # header only: ingest may be cached
             "start_s": cfg.start,
             "end_s": cfg.end,
         },
-        settings={
+        "settings": {
             "sensitivity": cfg.sensitivity,
             "start": cfg.start,
             "end": cfg.end,
@@ -184,12 +179,20 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
             "mapping": cfg.mapping.name if cfg.mapping else None,
             "mark_uncertain": cfg.mark_uncertain,
         },
-        models={
+        "models": {
             "detector": cfg.model,
             "beat_tracker": TRACKER,
             "separator": SEPARATOR if cfg.separate else None,
         },
-        csv_sha256=hashlib.sha256(csv_data).hexdigest(),
+    }
+
+
+def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> list[Path]:
+    """events.csv gets every detected hit; events.json the score, without merged-away hits."""
+    cfg = ctx.config
+    csv_data = render.events_csv(events)
+    doc = render.events_json(
+        score, **_metadata(ctx), csv_sha256=hashlib.sha256(csv_data).hexdigest()
     )
     if not events:
         log.warning("No drum events detected.")
@@ -197,6 +200,14 @@ def _render(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     midi = midi_bytes(score, {cls: i.midi_note for cls, i in instruments.items()}, cfg.midi_timing)
     musicxml = musicxml_bytes(score, instruments, cfg.mark_uncertain)
     return render.write_outputs(cfg.out_dir, cfg.input.stem, csv_data, doc, midi, musicxml)
+
+
+def _report(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> tuple[Path, int]:
+    """The report's path, and the number of flagged measures for the progress line."""
+    notes = {cls: i.midi_note for cls, i in mapping.load(ctx.config.mapping).items()}
+    text = review.build_report(score, events, **_metadata(ctx), midi_notes=notes)
+    path = render.write_report(ctx.config.out_dir, ctx.config.input.stem, text)
+    return path, len(score.measure_flags)
 
 
 def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:
@@ -272,6 +283,13 @@ STAGES = [
         "render",
         run=_render,
         summary=lambda ctx, paths: ", ".join(p.name for p in paths),
+        deps=("detect", "quantize"),
+        cached=False,
+    ),
+    Stage(
+        "report",
+        run=_report,
+        summary=lambda ctx, out: f"{out[0].name}: {out[1]} measures flagged for review",
         deps=("detect", "quantize"),
         cached=False,
     ),
