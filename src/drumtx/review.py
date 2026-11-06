@@ -151,7 +151,6 @@ def build_report(
     tm = score.tempo_map
     stem = Path(source["file"]).stem
     ts = tm.time_signatures[0]
-    per_bar = ts.beats
     placed = [(e, q) for e in score.events if (q := e.quantized)]
 
     excerpt = ""
@@ -200,13 +199,16 @@ def build_report(
         per_measure[q.measure].update(e.flags)
         per_measure[q.measure]["off_grid"] += abs(q.residual_frac) > thresholds.residual_frac
     rows = []
+    beat_s: defaultdict[int, list[float]] = defaultdict(list)  # each beat's length, as in flag()
+    for b, b2 in zip(tm.beats, tm.beats[1:], strict=False):
+        beat_s[b.measure].append(b2.time_s - b.time_s)
     for m in score.measure_flags:
         start, end = measure_times(tm, m.measure)
         n = per_measure[m.measure]
         reasons = {
             "uncertain": f"{n['uncertain']} uncertain",
             "off_grid": f"{n['off_grid']} off the grid",
-            "tempo": f"tempo {60 * per_bar / (end - start):.0f} BPM",
+            "tempo": f"tempo {60 / np.mean(beat_s[m.measure] or [np.nan]):.0f} BPM",
             "merged": f"{n['merged']} merged",
         }
         rows.append(

@@ -144,3 +144,12 @@ def test_report_without_beats() -> None:
     score = quantize([DrumEvent(1.0, "kick", 0.9, 100)], tempo_map(np.array([1.0]), np.array([])))
     text = report(score)
     assert "not found (fewer than two beats)" in text and "No measures are flagged" in text
+
+
+def test_report_tempo_of_a_clamped_pickup() -> None:
+    """A beat tracked in the silence before bar 1: measure 0 starts at 0 s in the report, and its
+    tempo comes from its beat (0.68 s, 88 BPM), not from that clamped span."""
+    t = np.concatenate([[0.32], 1.0 + np.arange(16) * 0.625])
+    score = review.flag(quantize([DrumEvent(1.0, "kick", 0.9, 100)], tempo_map(t, t[1::4])))
+    assert by_measure(score) == {0: ("tempo",)}
+    assert "| 0       | 0:00.00 | 0:01.00 | tempo 88 BPM |" in report(score)

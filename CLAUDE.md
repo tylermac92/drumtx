@@ -15,10 +15,11 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M5-3, through PR #39.
-- **In review: M5-4, review flag thresholds** (decision 0013, `scripts/tune_flags.py`). Then M5-5 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M5-4, through PR #40.
+- **In review: M5-5, the correction guide** (`docs/correction-guide.md`, `scripts/make_guide_sample.py`). Then M5-6 (stretch) or M6-1, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
+- **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.
 - **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
 - **MuseScore 4 check:** open `tests/golden/triplet.musicxml` once in MuseScore 4, and a file written with `--mark-uncertain` to see the red notes. Record it in `docs/compatibility.md`.
 - **DAW check for the MIDI file** (M3-4): manual, by the owner. Steps and the place to record the result are in decision 0011.
