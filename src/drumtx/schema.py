@@ -98,6 +98,16 @@ def event_to_json(e: DrumEvent) -> dict[str, Any]:
     }
 
 
+def tempo_map_from_json(d: dict[str, Any]) -> TempoMap:
+    return TempoMap(
+        beats=tuple(Beat(**b) for b in d["beats"]),
+        time_signatures=tuple(TimeSignature(**t) for t in d["time_signatures"]),
+        tempo_source=d["tempo_source"],
+        time_signature_source=d["time_signature_source"],
+        first_downbeat_source=d["first_downbeat_source"],
+    )
+
+
 def event_from_json(d: dict[str, Any]) -> DrumEvent:
     q = d["quantized"]
     return DrumEvent(

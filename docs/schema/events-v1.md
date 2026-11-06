@@ -90,7 +90,7 @@ time_s,class,confidence,velocity
 
 - UTF-8 with a header row and these four columns in this order. DrumTx writes LF line endings, `.` as the decimal point, times to the millisecond, and rows in time order.
 - When reading an edited file, rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100.
-- The CSV has no tempo map. `render` takes it from the `events.json` file beside the CSV.
+- The CSV has no tempo map. `render` takes it from the `events.json` file beside the CSV: `<name>.events.json` for `<name>.events.csv`.
 - The same columns are used for onset annotations in the evaluation corpus (decision 0004).
 
 A spreadsheet set to a locale that writes `,` as the decimal point will break the file. Check the separator before saving.

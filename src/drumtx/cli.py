@@ -6,7 +6,7 @@ import math
 from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast, get_args
 
 import soundfile as sf
 import typer
@@ -300,6 +300,78 @@ def models_download(
     _run(False, work)
 
 
+@app.command("render", help="Re-quantize and re-render from an (edited) events JSON or CSV.")
+def render_events(
+    events: Annotated[
+        Path,
+        typer.Argument(
+            metavar="EVENTS", help="events.json, or an edited events.csv (beside its events.json)."
+        ),
+    ],
+    formats: Annotated[
+        str, typer.Option(help="Outputs to write, from musicxml, midi and report.")
+    ] = "musicxml,midi,report",
+    time_signature: Annotated[
+        str | None, typer.Option(help="Meter as N/4, e.g. 3/4.", show_default="as stored")
+    ] = None,
+    first_downbeat: Annotated[
+        float | None,
+        typer.Option(
+            help="Start of bar 1, in seconds from the start of the file.", show_default="as stored"
+        ),
+    ] = None,
+    grid: Annotated[
+        GridOption, typer.Option(help="Note grid: 16th, triplet, or auto (chosen per beat).")
+    ] = "auto",
+    midi_timing: Annotated[
+        MidiTiming,
+        typer.Option(help="MIDI notes on the grid (quantized) or at their detected times."),
+    ] = "quantized",
+    mark_uncertain: Annotated[
+        bool,
+        typer.Option(
+            "--mark-uncertain", help="Color notes below the review confidence threshold in red."
+        ),
+    ] = False,
+    mapping_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--mapping",
+            help="Instrument mapping (TOML): MIDI notes and staff positions per class.",
+            show_default="built-in mapping.toml",
+        ),
+    ] = None,
+    verbose: Annotated[bool, typer.Option("-v", "--verbose", help="More detail.")] = False,
+    quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Errors only.")] = False,
+) -> None:
+    _setup_logging(verbose, quiet)
+    beats_per_bar = _beats_per_bar(time_signature)
+    chosen = [f.strip() for f in formats.split(",") if f.strip()]
+
+    def work() -> None:
+        if bad := [f for f in chosen if f not in get_args(pipeline.RenderFormat)]:
+            raise InputError(
+                f"--formats takes musicxml, midi and report, got {', '.join(bad)}. "
+                "render always rewrites events.json and never changes events.csv."
+            )
+        if first_downbeat is not None and first_downbeat < 0:
+            raise InputError(f"--first-downbeat must be 0 or more, got {first_downbeat:g}.")
+        mapping.load(mapping_file)  # a bad mapping fails here, naming each bad key
+        paths = pipeline.rerender(
+            events,
+            cast(list[pipeline.RenderFormat], chosen),
+            grid,
+            midi_timing,
+            mapping_file,
+            mark_uncertain,
+            first_downbeat,
+            beats_per_bar,
+        )
+        log.info("Wrote %s", ", ".join(p.name for p in paths))
+
+    _run(verbose, work)
+
+
 @app.command(help="Mix the original audio with synthesized detected hits.")
 def preview(
     audio: Annotated[Path, typer.Argument(metavar="INPUT", help="The transcribed audio file.")],
@@ -348,7 +420,6 @@ def preview(
 
 # The other commands from the Technical Design Document §4 are stubs until their milestones land.
 _COMMANDS = {
-    "render": "Re-quantize and re-render from an (edited) events JSON or CSV.",
     "doctor": "Check the environment: Python, decoders, FFmpeg, extras, models.",
 }
 

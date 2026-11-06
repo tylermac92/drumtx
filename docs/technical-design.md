@@ -102,6 +102,13 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 `render` never modifies `events.csv`. It overwrites the score, MIDI, and report, and rewrites `events.json` from the event list it rendered, so the tempo map, quantized positions, and flags there match the new score. The rewrite keeps the source metadata and the CSV hash recorded by `transcribe`, so edit protection still works. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
 
+Details (M5-3, `pipeline.rerender`):
+- **Where:** outputs go next to EVENTS, named after it (`song.events.csv` → `song.musicxml`). The audio file is not needed, and detection and beat tracking do not run.
+- **Options** default as in `transcribe`, not to the values stored in `events.json`; the settings recorded there are updated to what `render` used. `--formats` takes `musicxml`, `midi` and `report`.
+- **Bar lines:** the stored beats are numbered again (`beats.renumber`). Without `--first-downbeat`, bar 1 stays where it is; without `--time-signature`, so does the meter. So a render without options reproduces the stored tempo map, and a moved bar 1 stays moved in later renders.
+- **Flags:** from `events.json`, a hit keeps its `merged` flag, since the hits merged into it are no longer in the file. From `events.csv`, merges are worked out again.
+- **Check:** on 6 development clips (4 MDB Drums, 2 E-GMD) transcribed with the defaults, rendering the unedited `events.json` or `events.csv` reproduced `events.json` exactly.
+
 ### `preview` options
 
 `drumtx preview INPUT EVENTS` reads an `events.json` or an `events.csv` (edited or not) and writes `-o FILE`, by default `<input name>.preview.wav` next to EVENTS. It refuses to overwrite an existing file without `--force`. `--split-stereo` puts the original on the left channel and the synthesized hits on the right; without it the output is mono.
