@@ -8,8 +8,9 @@ import pytest
 import soundfile as sf
 from typer.testing import CliRunner
 
-from drumtx import pipeline, separate
+from drumtx import pipeline
 from drumtx.cli import app
+from drumtx.errors import install_hint
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 
 runner = CliRunner()
@@ -30,7 +31,7 @@ def test_missing_extra_gives_the_install_command(
     assert result.exit_code == 3
     assert f'"{sys.executable}" -m pip install "openunmix' in result.stderr
     monkeypatch.setattr(sys, "prefix", str(Path("/home/me/.local/share/pipx/venvs/drumtx")))
-    assert separate.install_hint().startswith('pipx inject drumtx "openunmix')
+    assert install_hint("separation").startswith('pipx inject drumtx "openunmix')
 
 
 def test_separator_is_not_a_detection_model(wav: Path) -> None:

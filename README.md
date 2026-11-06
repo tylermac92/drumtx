@@ -2,7 +2,7 @@
 
 Command-line drum transcription from audio to editable notation. A personal project; see `docs/` for the brief, design, and milestone plan. The output formats (`events.json`, `events.csv`, the instrument mapping) are specified in `docs/schema/events-v1.md`.
 
-**Status:** M3 (tempo, quantization and MIDI) is done, and so is M4 (MusicXML). `drumtx transcribe` writes `events.json`, `events.csv`, a MIDI file, a MusicXML file and a review report (`report.md`, M5-1); `drumtx preview` mixes the original audio with the detected hits; `drumtx render` re-renders after edits to `events.csv` or with a moved bar 1 or a new meter; `evaluate` and `models` work. `--mark-uncertain` colors doubtful notes red. Every development-set transcription opens in MuseScore (`docs/compatibility.md`). The review flags are tuned (M5-4), and `docs/correction-guide.md` shows how to correct a transcription, step by step. M6 (hardening and documentation) is next; the event plot (M5-6) is an optional stretch task. Progress notes for contributors are in `CLAUDE.md`.
+**Status:** M3 (tempo, quantization and MIDI) is done, and so is M4 (MusicXML). `drumtx transcribe` writes `events.json`, `events.csv`, a MIDI file, a MusicXML file and a review report (`report.md`, M5-1); `drumtx preview` mixes the original audio with the detected hits; `drumtx render` re-renders after edits to `events.csv` or with a moved bar 1 or a new meter; `evaluate` and `models` work. `--mark-uncertain` colors doubtful notes red. Every development-set transcription opens in MuseScore (`docs/compatibility.md`). The review flags are tuned (M5-4), and `docs/correction-guide.md` shows how to correct a transcription, step by step. With the `[plot]` extra, `--plot` draws the hits over time with flagged measures shaded. M6 (hardening and documentation) is next. Progress notes for contributors are in `CLAUDE.md`.
 
 ## Install
 
@@ -12,6 +12,8 @@ Requires Python 3.11–3.13.
 pipx install .
 drumtx --help
 ```
+
+Two optional extras: `[separation]` for `--separate` (PyTorch, large) and `[plot]` for `--plot` (matplotlib). Install with, for example, `pipx install ".[plot]"`, or add one later with `pipx inject drumtx matplotlib`.
 
 ## Develop
 

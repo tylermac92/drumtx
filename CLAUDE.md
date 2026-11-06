@@ -15,8 +15,8 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M5-4, through PR #40.
-- **In review: M5-5, the correction guide** (`docs/correction-guide.md`, `scripts/make_guide_sample.py`). Then M5-6 (stretch) or M6-1, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M5-5, through PR #41.
+- **In review: M5-6, the event plot** (`plot.py`, `--plot`, the `[plot]` extra). Then M6-1 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.
@@ -73,6 +73,7 @@ uv run --python 3.11 pytest -q
 | `beats.py` | Beat This! tracker and `tempo_map` |
 | `quantize.py` | Grid per beat, merges, residuals |
 | `review.py` | Flags and their thresholds; the review report |
+| `plot.py` | The `--plot` PNG (the `[plot]` extra; matplotlib is in the dev group, so its tests run) |
 | `midi.py` | MIDI writer (decision 0011) |
 | `musicxml.py` | MusicXML writer (decision 0007) |
 | `mapping.py` | Instrument mapping (`mapping.toml`) |

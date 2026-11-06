@@ -11,7 +11,7 @@ from typing import Annotated, cast, get_args
 import soundfile as sf
 import typer
 
-from drumtx import ingest, mapping, models, pipeline, render, schema, separate, synth
+from drumtx import ingest, mapping, models, pipeline, plot, render, schema, separate, synth
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -134,6 +134,13 @@ def transcribe(
             "--mark-uncertain", help="Color notes below the review confidence threshold in red."
         ),
     ] = False,
+    plot_png: Annotated[
+        bool,
+        typer.Option(
+            "--plot",
+            help="Also write <name>.plot.png: the hits over time, flagged measures shaded.",
+        ),
+    ] = False,
     mapping_file: Annotated[
         Path | None,
         typer.Option(
@@ -194,6 +201,7 @@ def transcribe(
         midi_timing=midi_timing,
         mapping=mapping_file,
         mark_uncertain=mark_uncertain,
+        plot=plot_png,
         no_cache=no_cache,
         force=force,
     )
@@ -208,6 +216,8 @@ def transcribe(
             raise InputError(f"{model} is not a detection model; see `drumtx models list`.")
         if separate_drums:
             separate.check_installed()
+        if plot_png:
+            plot.check_installed()
         mapping.load(mapping_file)  # a bad mapping fails here, naming each bad key
         render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
         pipeline.run(pipeline.RunContext.create(config))
@@ -333,6 +343,13 @@ def render_events(
             "--mark-uncertain", help="Color notes below the review confidence threshold in red."
         ),
     ] = False,
+    plot_png: Annotated[
+        bool,
+        typer.Option(
+            "--plot",
+            help="Also write <name>.plot.png: the hits over time, flagged measures shaded.",
+        ),
+    ] = False,
     mapping_file: Annotated[
         Path | None,
         typer.Option(
@@ -357,6 +374,8 @@ def render_events(
         if first_downbeat is not None and first_downbeat < 0:
             raise InputError(f"--first-downbeat must be 0 or more, got {first_downbeat:g}.")
         mapping.load(mapping_file)  # a bad mapping fails here, naming each bad key
+        if plot_png:
+            plot.check_installed()
         paths = pipeline.rerender(
             events,
             cast(list[pipeline.RenderFormat], chosen),
@@ -364,8 +383,9 @@ def render_events(
             midi_timing,
             mapping_file,
             mark_uncertain,
-            first_downbeat,
-            beats_per_bar,
+            plot_png=plot_png,
+            first_downbeat=first_downbeat,
+            beats_per_bar=beats_per_bar,
         )
         log.info("Wrote %s", ", ".join(p.name for p in paths))
 
