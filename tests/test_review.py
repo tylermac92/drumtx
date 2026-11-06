@@ -37,10 +37,10 @@ def test_clean_groove_has_no_flags() -> None:
 
 
 def test_uncertain() -> None:
-    score = flagged([4, 5], confidence=0.45)
+    score = flagged([4, 5], confidence=0.25)
     assert all(e.flags == ("uncertain",) for e in score.events)
     assert by_measure(score) == {2: ("uncertain",)}
-    strict = review.flag(score, review.Thresholds(confidence=0.4))
+    strict = review.flag(score, review.Thresholds(confidence=0.2))
     assert strict.measure_flags == () and all(e.flags == () for e in strict.events)
 
 
@@ -55,11 +55,11 @@ def test_merged() -> None:
 
 @pytest.mark.parametrize("bpm", [60, 200])
 def test_off_grid_uses_a_fraction_of_the_grid_step(bpm: float) -> None:
-    """0.3 of a 16th is 75 ms at 60 BPM and 22.5 ms at 200 BPM: both flagged; 0.2 is not."""
-    late = [8 + 0.3 / 4, 9 + 0.3 / 4]  # two hits 0.3 of a 16th late, in measure 3
+    """0.45 of a 16th is 112.5 ms at 60 BPM and 34 ms at 200 BPM: both flagged; 0.35 is not."""
+    late = [8 + 0.45 / 4, 9 + 0.45 / 4, 10 + 0.45 / 4]  # three hits 0.45 of a 16th late, bar 3
     assert by_measure(flagged(late, bpm)) == {3: ("off_grid",)}
-    assert flagged([8 + 0.2 / 4, 9 + 0.2 / 4], bpm).measure_flags == ()
-    assert flagged([8 + 0.3 / 4, 9], bpm).measure_flags == ()  # one hit off the grid is allowed
+    assert flagged([8 + 0.35 / 4, 9 + 0.35 / 4, 10 + 0.35 / 4], bpm).measure_flags == ()
+    assert flagged(late[:2], bpm).measure_flags == ()  # two hits off the grid are allowed
 
 
 def test_tempo() -> None:
@@ -71,7 +71,7 @@ def test_tempo() -> None:
 
 
 def test_measure_flags_combine_in_schema_order() -> None:
-    score = flagged([8.075, 9.075, 9.5], confidence=0.45)
+    score = flagged([8.1125, 9.1125, 10.1125, 9.5], confidence=0.25)
     assert score.measure_flags == (MeasureFlags(3, ("uncertain", "off_grid")),)
 
 
@@ -113,7 +113,7 @@ def test_measure_times() -> None:
 
 
 def test_report_lists_flagged_measures_with_times() -> None:
-    text = report(flagged([4, 5, 8], confidence=0.45))
+    text = report(flagged([4, 5, 8], confidence=0.25))
     assert "| 2       | 0:02.00 | 0:04.00 | 2 uncertain |" in text
     assert "| 3       | 0:04.00 | 0:06.00 | 1 uncertain |" in text
     assert "| snare  | 38        | 3        | 3            | 3         |" in text
@@ -137,7 +137,7 @@ def test_report_reasons() -> None:
     text = report(merged, merged_events)
     assert "| 2       | 0:02.00 | 0:04.00 | 1 merged |" in text
     assert "| snare  | 38        | 2        | 1            | 0         |" in text
-    assert "2 off the grid" in report(flagged([8.075, 9.075]))
+    assert "3 off the grid" in report(flagged([8.1125, 9.1125, 10.1125]))
 
 
 def test_report_without_beats() -> None:

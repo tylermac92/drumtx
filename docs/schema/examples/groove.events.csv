@@ -16,7 +16,7 @@ time_s,class,confidence,velocity
 2.752,hihat,0.89,101
 2.990,snare,0.82,101
 2.999,hihat,0.96,93
-3.245,hihat,0.41,85
+3.245,hihat,0.21,85
 3.498,kick,0.92,79
 3.509,hihat,0.92,88
 3.753,hihat,0.77,102

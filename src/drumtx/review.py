@@ -13,7 +13,7 @@ Measures (only flagged measures are listed):
   `Thresholds.tempo`.
 - `merged`: contains a merged event.
 
-The defaults are first estimates; M5-4 tunes them on the development set.
+The defaults were tuned on the development set in M5-4 (decision 0013, scripts/tune_flags.py).
 
 `build_report` writes the review report (M5-1): `<name>.report.md`.
 """
@@ -41,9 +41,12 @@ from drumtx.schema import (
 
 @dataclass(frozen=True)
 class Thresholds:
-    confidence: float = 0.5  # below it, a hit is more likely false than real (M2-4 reliability)
-    residual_frac: float = 0.25  # of a grid step
-    off_grid_events: int = 1  # flag when more events than this are off the grid
+    """Defaults tuned on the development set (M5-4, decision 0013): they flag about a quarter of
+    the measures, and four in ten of those where half the hits or more are wrong."""
+
+    confidence: float = 0.3  # well below 0.5, where a hit is more likely false than real (M2-4)
+    residual_frac: float = 0.4  # of a grid step; 0.5 is the most a hit can be off
+    off_grid_events: int = 2  # flag when more events than this are off the grid
     tempo: float = 0.08  # relative difference from the median beat length
 
 

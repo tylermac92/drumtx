@@ -3,7 +3,7 @@
   "source": {"file": "groove.wav", "sha256": "954875e08e6eaf12b22ef38be12dc646adb7afdc52ec7beef51d407d05243453", "duration_s": 4.75, "start_s": null, "end_s": null},
   "settings": {"sensitivity": "balanced", "separate": false, "grid": "auto", "bpm": null, "time_signature": "4/4", "first_downbeat": null},
   "models": {"detector": "adtof-frame-rnn", "beat_tracker": null, "separator": null},
-  "csv_sha256": "281e33ea4ac62a9ccb36254ffb6d85b45a53736827bbbf23d67314c9261e0ccc",
+  "csv_sha256": "2684e0d725146dc685e0ff075a0b1460e0f3c6ad11b7d30b2a57f710af375ae3",
   "tempo_map": {
     "beats": [],
     "time_signatures": [{"measure": 1, "beats": 4, "beat_type": 4}],
@@ -29,7 +29,7 @@
     {"time_s": 2.752, "class": "hihat", "confidence": 0.89, "velocity": 101, "quantized": null, "flags": []},
     {"time_s": 2.99, "class": "snare", "confidence": 0.82, "velocity": 101, "quantized": null, "flags": []},
     {"time_s": 2.999, "class": "hihat", "confidence": 0.96, "velocity": 93, "quantized": null, "flags": []},
-    {"time_s": 3.245, "class": "hihat", "confidence": 0.41, "velocity": 85, "quantized": null, "flags": []},
+    {"time_s": 3.245, "class": "hihat", "confidence": 0.21, "velocity": 85, "quantized": null, "flags": []},
     {"time_s": 3.498, "class": "kick", "confidence": 0.92, "velocity": 79, "quantized": null, "flags": []},
     {"time_s": 3.509, "class": "hihat", "confidence": 0.92, "velocity": 88, "quantized": null, "flags": []},
     {"time_s": 3.753, "class": "hihat", "confidence": 0.77, "velocity": 102, "quantized": null, "flags": []},
