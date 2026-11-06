@@ -263,12 +263,12 @@ Drum notation conventions vary between publishers. The mapping is documented in 
    - Implemented in `src/drumtx/quantize.py` (M3-2). The triplet penalty is 0.05 beats of total snapping error; on the development score subset with the reference beats, 88–90% of found hits get the reference position for any penalty from 0 to 0.1. Most of the rest are single swung 8th notes, which stay on 16ths (swing is post-MVP).
 6. **Render.** MusicXML, MIDI and JSON are written from the quantized score. The CSV is written from the full event list, so merged hits can be restored by editing it.
 7. **Report.** Measures are flagged when:
-   - they contain uncertain events (confidence below the review threshold, 0.5);
-   - they contain more than one event with a residual above 25% of the grid step;
+   - they contain uncertain events (confidence below the review threshold, 0.3);
+   - they contain more than two events with a residual above 40% of the grid step;
    - the local tempo deviates more than 8% from the median;
    - a collision merge happened in them.
 
-   The flag thresholds are configurable (`review.Thresholds`, M3-3) and tuned in M5. The flags are computed with the quantized score, so they are in `events.json` as well as the report. With the defaults, 67% of development measures are flagged (uncertain 40%, off-grid 42%, merged 15%, tempo 1%), too many to guide a review; M5-4 tunes them.
+   The flag thresholds are configurable (`review.Thresholds`, M3-3). The flags are computed with the quantized score, so they are in `events.json` as well as the report. The defaults were tuned on the development set in M5-4 (decision 0013, `scripts/tune_flags.py`): they flag 25% of the measures, and 43% of the measures where half the hits or more are wrong; 66% of flagged measures are such measures, against 39% of all measures. The first estimates flagged 64%.
 
    The report stage (M5-1) writes `<name>.report.md` on every run. A flagged measure's start and end are the times of its first beat and of the next measure's, past the tracked beats extending the end intervals as the quantizer does. Spot check on 5 development clips with the ADTOF model (MDB Drums 80sRock drum-only and full mix, BebopJazz drum-only; two E-GMD grooves): of 182 flagged measures, every hit placed in a measure lies inside its reported times (within half a 16th, since early hits snap forward), and every start is within 70 ms of a reference downbeat (median 10–30 ms).
 

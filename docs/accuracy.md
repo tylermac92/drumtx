@@ -72,7 +72,11 @@ Separation improves kick and snare on full mixes and costs a little hi-hat and c
 
 Every hit has a confidence from 0 to 1. Higher confidence means a hit is more likely to be real.
 
-On unseen audio, the middle range overstates it: about half of the hits between 0.6 and 0.8 are real for kick, snare and cymbal. Check notes below 0.8 first. Hits below 0.5 are flagged `uncertain` in `events.json`; with `--mark-uncertain` they are red in the MusicXML.
+On unseen audio, the middle range overstates it: about half of the hits between 0.6 and 0.8 are real for kick, snare and cymbal. Check notes below 0.8 first. Hits below 0.3 are flagged `uncertain` in `events.json`; with `--mark-uncertain` they are red in the MusicXML.
+
+## Review flags
+
+The report flags about a quarter of the measures on the development set. About four in ten of the measures where half the hits or more are wrong are flagged, and two in three flagged measures are such measures (decision 0013). Most of what flags miss is quiet notes that were never detected, so unflagged measures can be wrong too.
 
 Velocity is only a rough loud/soft estimate.
 

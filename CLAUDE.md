@@ -7,7 +7,7 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 | `docs/project-brief.md` | Goals, scope and targets |
 | `docs/technical-design.md` | Architecture, CLI and file formats |
 | `docs/milestone-tasks.md` | Every task, with acceptance criteria and dependencies |
-| `docs/decisions/` | One record per decision (0001–0012). Read the ones a task depends on. |
+| `docs/decisions/` | One record per decision (0001–0013). Read the ones a task depends on. |
 | `docs/schema/events-v1.md` | The `events.json`/`events.csv` and mapping formats |
 | `docs/accuracy.md` | User-facing accuracy |
 | `docs/compatibility.md` | Notation apps checked, and the MuseScore check script |
@@ -15,14 +15,13 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M5-2, through PR #38.
-- **In review: M5-3, `render` from edited events** (`pipeline.rerender`, `beats.renumber`). Then M5-4 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M5-3, through PR #39.
+- **In review: M5-4, review flag thresholds** (decision 0013, `scripts/tune_flags.py`). Then M5-5 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
 - **MuseScore 4 check:** open `tests/golden/triplet.musicxml` once in MuseScore 4, and a file written with `--mark-uncertain` to see the red notes. Record it in `docs/compatibility.md`.
 - **DAW check for the MIDI file** (M3-4): manual, by the owner. Steps and the place to record the result are in decision 0011.
-- **Review flags:** they flag 67% of development measures with the defaults. M5-4 tunes them (decision 0012 and `review.py`).
 - **Long silences** (M4-4): around a 20 s silence, Beat This! adds spurious half-beats, so bar numbers after it are wrong (decision 0007). No task is planned for it.
 - **Nightly CI benchmark:** it converts the beat model and ADTOF on every run, because the models aren't cached. It also runs the MuseScore check (`scripts/check_musescore.py`, M4-5).
 
@@ -99,6 +98,7 @@ The corpus lives in `~/drumtx-data`, outside the repo. A new cloud session start
 **Benchmark:**
 - **Dev run:** `uv run python scripts/benchmark.py --model adtof --compare eval/results/adtof-dev.json`.
 - **Test set:** only with `--release`, for M2-7 and M7-4 (decision 0004).
+- **Flag thresholds:** `uv run python scripts/tune_flags.py` (decision 0013). It caches detections and beats in `~/drumtx-data/flags-cache.json`.
 
 ## Rules that must hold
 
