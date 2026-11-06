@@ -6,6 +6,7 @@ On disk these are `events.json` schema v1 (`events-v1.schema.json` next to this 
 """
 
 import csv
+import json
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -147,3 +148,19 @@ def read_events_csv(path: Path) -> list[DrumEvent]:
         shown = "\n  ".join(errors[:20]) + ("\n  ..." if len(errors) > 20 else "")
         raise InputError(f"{path.name} has {len(errors)} bad rows:\n  {shown}")
     return sorted(events, key=lambda e: (e.time_s, CLASSES.index(e.cls)))
+
+
+def read_events(path: Path) -> list[DrumEvent]:
+    """The events of an events.json (the score, positions and flags included) or an events.csv."""
+    if path.suffix.lower() == ".csv":
+        return read_events_csv(path)
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        events = [event_from_json(e) for e in doc["events"]]
+        if bad := sorted({e.cls for e in events} - set(CLASSES)):
+            raise ValueError(f"unknown class {bad[0]!r}")
+        return events
+    except OSError as e:
+        raise InputError(f"Cannot read {path}: {e.strerror}") from e
+    except (ValueError, KeyError, TypeError) as e:
+        raise InputError(f"{path.name} is not a DrumTx events.json file ({e!r}).") from e

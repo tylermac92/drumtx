@@ -102,6 +102,10 @@ drumtx doctor                        Check environment: Python, decoders, FFmpeg
 
 `render` never modifies `events.csv`. It overwrites the score, MIDI, and report, and rewrites `events.json` from the event list it rendered, so the tempo map, quantized positions, and flags there match the new score. The rewrite keeps the source metadata and the CSV hash recorded by `transcribe`, so edit protection still works. A tempo fix (`--bpm`) needs the beat tracker, so it goes through `transcribe --force`, which reuses the cached detection.
 
+### `preview` options
+
+`drumtx preview INPUT EVENTS` reads an `events.json` or an `events.csv` (edited or not) and writes `-o FILE`, by default `<input name>.preview.wav` next to EVENTS. It refuses to overwrite an existing file without `--force`. `--split-stereo` puts the original on the left channel and the synthesized hits on the right; without it the output is mono.
+
 ### Key `evaluate` options
 
 `evaluate` takes `--pred` (an `events.json` or `events.csv`) and `--ref`: a MIDI file (channel 10, General MIDI drum notes) or a CSV in the `events.csv` format. Options:
@@ -171,7 +175,7 @@ Note: automatic transcription contains errors. Check flagged measures first.
 | `<name>.events.json` | Versioned JSON (`schema_version`), with a published JSON Schema | Source metadata (file name, SHA-256, duration, excerpt bounds), pipeline settings, model IDs, tempo map, events with confidence, velocity, quantized position, and review flags, per-measure review flags, plus the SHA-256 of the `events.csv` as written by `transcribe`. This is the authoritative intermediate format. |
 | `<name>.events.csv` | CSV: `time_s,class,confidence,velocity` (`docs/schema/events-v1.md`) | The correction-friendly format. Edit it in any spreadsheet, then run `drumtx render`. Rows may be in any order. In rows added by hand, `confidence` and `velocity` may be left blank; they are read as 1.0 and 100. |
 | `<name>.report.md` | Markdown | Summary (source, tempo and its stability, time signature, first downbeat, share of measures flagged), per-class counts with the MIDI note of each class, flagged measures with their start and end in source-file seconds and the reasons, suggested next steps, settings and model IDs, and a limitations note. Tables are padded, so it reads as plain text too. Written by `review.build_report` (M5-1). |
-| `<name>.preview.wav` | WAV, from `drumtx preview` only | Original audio plus synthesized hits (drum sounds generated in code). |
+| `<name>.preview.wav` | WAV, from `drumtx preview` only | The whole source file at 44.1 kHz, 16-bit, turned down by about 10 dB (`synth.ORIGINAL_GAIN`), plus the hits synthesized in code at their event times and velocities (`synth.preview`, M5-2). The mix is scaled down as a whole rather than clipped. Mono, or stereo with `--split-stereo`. |
 
 ### Default instrument mapping
 
@@ -225,7 +229,8 @@ Drum notation conventions vary between publishers. The mapping is documented in 
 | `track` | Beat and downbeat estimation, respecting user overrides. | `BeatTracker.track(AudioBuffer, hints) -> TempoMap` |
 | `quantize` | Assign events to a metrical grid. Compute timing residuals and review flags. | `quantize(events, tempo_map, grid) -> QuantizedScore` |
 | `render` | Write output files from a `QuantizedScore` and the event list. | `Renderer.write(score, path)` per format |
-| `review` | Report generation, preview synthesis, flag thresholds. | `build_report(...)`, `synthesize_preview(...)` |
+| `review` | Report generation, flag thresholds. | `flag(...)`, `build_report(...)` |
+| `synth` | Drum sounds generated in code, for test fixtures and the preview. | `drum_hit(...)`, `preview(...)` |
 | `evaluate` | Onset-level and grid-level metrics against references. | `evaluate(pred, ref, tolerance) -> Metrics` |
 | `models` | Model registry (ID, version, URL, SHA-256, license), download, cache directory, offline mode. | `get_model(id, offline) -> Path` |
 | `pipeline` | Runs the stages and caches stage outputs. `render` reuses the cache or the events file. | `run(config) -> RunResult` |
