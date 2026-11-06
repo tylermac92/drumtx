@@ -2,14 +2,16 @@
 
 import json
 import logging
+import math
 from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated
 
+import soundfile as sf
 import typer
 
-from drumtx import mapping, models, pipeline, render, separate
+from drumtx import ingest, mapping, models, pipeline, render, schema, separate, synth
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
 from drumtx.ingest import DEFAULT_MAX_DURATION_S
@@ -298,10 +300,55 @@ def models_download(
     _run(False, work)
 
 
+@app.command(help="Mix the original audio with synthesized detected hits.")
+def preview(
+    audio: Annotated[Path, typer.Argument(metavar="INPUT", help="The transcribed audio file.")],
+    events: Annotated[
+        Path, typer.Argument(metavar="EVENTS", help="Its events.json or (edited) events.csv.")
+    ],
+    out: Annotated[
+        Path | None,
+        typer.Option(
+            "-o",
+            "--out",
+            help="WAV file to write.",
+            show_default="<input name>.preview.wav next to EVENTS",
+        ),
+    ] = None,
+    split_stereo: Annotated[
+        bool,
+        typer.Option(
+            "--split-stereo", help="Original on the left channel, synthesized hits on the right."
+        ),
+    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite the WAV file.")] = False,
+    verbose: Annotated[bool, typer.Option("-v", "--verbose", help="More detail.")] = False,
+    quiet: Annotated[bool, typer.Option("-q", "--quiet", help="Errors only.")] = False,
+) -> None:
+    _setup_logging(verbose, quiet)
+    path = out or events.with_name(f"{audio.stem}.preview.wav")
+
+    def work() -> None:
+        if path.exists() and not force:
+            raise InputError(f"{path} already exists. Use --force to overwrite.")
+        hits = schema.read_events(events)
+        # The whole file, whatever excerpt was transcribed: event times are source-file times.
+        original = ingest.load_audio(audio, max_duration=math.inf).mono
+        mix = synth.preview(original, hits, split_stereo)
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            sf.write(tmp, mix, ingest.SAMPLE_RATE, subtype="PCM_16", format="WAV")
+            tmp.replace(path)
+        except (OSError, sf.LibsndfileError) as e:
+            raise InputError(f"Cannot write {path}: {e}") from e
+        log.info("%s: %d hits over %s", path, len(hits), audio.name)
+
+    _run(verbose, work)
+
+
 # The other commands from the Technical Design Document §4 are stubs until their milestones land.
 _COMMANDS = {
     "render": "Re-quantize and re-render from an (edited) events JSON or CSV.",
-    "preview": "Mix the original audio with synthesized detected hits.",
     "doctor": "Check the environment: Python, decoders, FFmpeg, extras, models.",
 }
 

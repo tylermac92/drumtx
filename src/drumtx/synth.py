@@ -4,12 +4,14 @@ Used for test fixtures (M1-5) and the audio preview (M5-2). Each sound is determ
 most of its energy in its class's band in `detect.BANDS_HZ`. They are stand-ins, not realistic kits.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 
 from drumtx.ingest import SAMPLE_RATE
-from drumtx.schema import CLASSES, DrumClass
+from drumtx.schema import CLASSES, DrumClass, DrumEvent
+
+ORIGINAL_GAIN = 0.3  # about -10 dB, so the synthesized hits stand out
 
 
 def _noise(n: int, lo: float, hi: float, seed: int) -> np.ndarray:
@@ -57,3 +59,15 @@ def render(hits: Iterable[tuple[float, DrumClass, int]], seconds: float) -> np.n
         h = drum_hit(cls, velocity)[: max(0, len(y) - start)]
         y[start : start + len(h)] += h
     return y
+
+
+def preview(original: np.ndarray, events: Sequence[DrumEvent], split_stereo: bool) -> np.ndarray:
+    """The preview (M5-2): mono source audio at SAMPLE_RATE, turned down, mixed with the events
+    synthesized in place. Same length as `original`; shape (frames, 1), or (frames, 2) with the
+    original left and the hits right. Scaled down as a whole if it would clip."""
+    hits = render(((e.time_s, e.cls, e.velocity) for e in events), len(original) / SAMPLE_RATE)
+    hits = np.pad(hits, (0, len(original) - len(hits)))  # rounding can leave it a sample short
+    quiet = original * ORIGINAL_GAIN
+    out = np.stack([quiet, hits], axis=1) if split_stereo else (quiet + hits)[:, None]
+    peak = float(np.abs(out).max(initial=0))
+    return (out / max(peak, 1.0)).astype(np.float32)
