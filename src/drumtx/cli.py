@@ -56,7 +56,34 @@ def _run(verbose: bool, work: Callable[[], object]) -> None:
     except DrumtxError as e:
         log.error("Error: %s", e)
         raise typer.Exit(e.exit_code) from None
+    except OSError as e:  # a file or folder that can't be read or written: not a bug in DrumTx
+        if verbose:
+            log.exception("File error")
+        where = f" {e.filename}" if e.filename else ""
+        log.error(
+            "Error: Cannot read or write%s: %s. Check the path, the permissions and the free "
+            "space, or choose another output folder with -o.",
+            where,
+            e.strerror or e,
+        )
+        raise typer.Exit(2) from None
+    except KeyboardInterrupt:  # files are replaced atomically, so none is left half-written
+        log.error("Interrupted.")
+        raise typer.Exit(130) from None
+    except MemoryError:
+        if verbose:
+            log.exception("Out of memory")
+        log.error(
+            "Error: Out of memory. Transcribe a shorter excerpt with --start and --end, or close "
+            "other programs."
+        )
+        raise typer.Exit(4) from None
     except Exception as e:
+        if type(e).__module__.startswith("onnxruntime"):  # inference failed: exit 4 (§4)
+            if verbose:
+                log.exception("Model error")
+            log.error("Error: Running the model failed: %s", e)
+            raise typer.Exit(4) from None
         if verbose:
             log.exception("Unexpected error")
         else:
@@ -260,11 +287,8 @@ def evaluate(
         )
         report = ev.markdown(result, pred, ref)
         if out is not None:
-            try:
-                out.with_name(out.name + ".json").write_text(json.dumps(result, indent=2) + "\n")
-                out.with_name(out.name + ".md").write_text(report, encoding="utf-8")
-            except OSError as e:
-                raise InputError(f"Cannot write {out}.json / .md: {e.strerror}") from e
+            out.with_name(out.name + ".json").write_text(json.dumps(result, indent=2) + "\n")
+            out.with_name(out.name + ".md").write_text(report, encoding="utf-8")
         typer.echo(report, nl=False)
 
     _run(False, work)
