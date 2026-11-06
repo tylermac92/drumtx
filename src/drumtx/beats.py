@@ -6,6 +6,7 @@ postprocessing are NumPy ports of the upstream `beat_this` 1.1.0 package (`LogMe
 """
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
@@ -196,4 +197,24 @@ def tempo_map(
         tempo_source=tempo_source,
         time_signature_source="user" if time_signature_given else "default",
         first_downbeat_source="user" if first_downbeat is not None else "estimated",
+    )
+
+
+def renumber(tm: TempoMap, first_downbeat: float | None, beats_per_bar: int | None) -> TempoMap:
+    """The stored beats numbered again for `render` (M5-3), without the audio: bar 1 moves to the
+    beat nearest `first_downbeat` and bars get `beats_per_bar` beats. Without them, bar 1 and the
+    meter stay as they are, and so does every source."""
+    times = np.array([b.time_s for b in tm.beats])
+    bar1 = next((b.time_s for b in tm.beats if b.measure == 1 and b.beat == 1), None)
+    renumbered = tempo_map(
+        times,
+        np.array([b.time_s for b in tm.beats if b.beat == 1]),
+        beats_per_bar or tm.time_signatures[0].beats,
+        first_downbeat=bar1 if first_downbeat is None else first_downbeat,
+    )
+    return replace(
+        renumbered,
+        tempo_source=tm.tempo_source,
+        time_signature_source="user" if beats_per_bar else tm.time_signature_source,
+        first_downbeat_source="user" if first_downbeat is not None else tm.first_downbeat_source,
     )

@@ -20,16 +20,25 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
 from drumtx import beats, detect, ingest, mapping, models, render, review
 from drumtx.detect import Preset
+from drumtx.errors import InputError
 from drumtx.midi import MidiTiming, midi_bytes
 from drumtx.musicxml import musicxml_bytes
 from drumtx.quantize import GridOption, quantize
-from drumtx.schema import CLASSES, DrumEvent, QuantizedScore, event_from_json, event_to_json
+from drumtx.schema import (
+    CLASSES,
+    DrumEvent,
+    QuantizedScore,
+    event_from_json,
+    event_to_json,
+    read_events,
+    tempo_map_from_json,
+)
 from drumtx.separate import SEPARATOR, Device, isolate_drums
 
 log = logging.getLogger("drumtx")
@@ -208,6 +217,74 @@ def _report(ctx: RunContext, events: list[DrumEvent], score: QuantizedScore) -> 
     text = review.build_report(score, events, **_metadata(ctx), midi_notes=notes)
     path = render.write_report(ctx.config.out_dir, ctx.config.input.stem, text)
     return path, len(score.measure_flags)
+
+
+RenderFormat = Literal["musicxml", "midi", "report"]
+
+
+def rerender(
+    events_path: Path,
+    formats: Sequence[RenderFormat],
+    grid: GridOption = "auto",
+    midi_timing: MidiTiming = "quantized",
+    mapping_path: Path | None = None,
+    mark_uncertain: bool = False,
+    first_downbeat: float | None = None,
+    beats_per_bar: int | None = None,
+) -> list[Path]:
+    """`drumtx render` (M5-3): quantize and render (edited) events again, without the audio.
+
+    The tempo map comes from `<name>.events.json`, renumbered by the overrides. events.csv is never
+    written. events.json is rewritten from the new score, keeping its source, models and CSV hash.
+    """
+    stem = events_path.name.removesuffix(events_path.suffix).removesuffix(".events")
+    out_dir = events_path.parent
+    json_path = render.event_paths(out_dir, stem)[0]
+    try:
+        doc = json.loads(json_path.read_text(encoding="utf-8"))
+        stored = tempo_map_from_json(doc["tempo_map"])
+        source, models_, settings, csv_sha256 = (
+            doc[k] for k in ("source", "models", "settings", "csv_sha256")
+        )
+    except OSError as e:
+        raise InputError(
+            f"Cannot read {json_path} ({e.strerror}): render takes the tempo map from it."
+        ) from e
+    except (ValueError, KeyError, TypeError) as e:
+        raise InputError(f"{json_path.name} is not a DrumTx events.json file ({e!r}).") from e
+    # From events.json, `merged` stays: the hits merged away are not in the file to merge again.
+    events = [dataclasses.replace(e, quantized=None) for e in read_events(events_path)]
+    tm = beats.renumber(stored, first_downbeat, beats_per_bar)
+    score = review.flag(quantize(events, tm, grid))
+    meta = {
+        "source": source,
+        "settings": {
+            **settings,
+            "grid": grid,
+            "midi_timing": midi_timing,
+            "mapping": mapping_path.name if mapping_path else None,
+            "mark_uncertain": mark_uncertain,
+            "time_signature": f"{beats_per_bar}/4" if beats_per_bar else settings["time_signature"],
+            "first_downbeat": settings["first_downbeat"]
+            if first_downbeat is None
+            else first_downbeat,
+        },
+        "models": models_,
+    }
+    instruments = mapping.load(mapping_path)
+    notes = {cls: i.midi_note for cls, i in instruments.items()}
+    paths = render.write_outputs(
+        out_dir,
+        stem,
+        None,
+        render.events_json(score, **meta, csv_sha256=csv_sha256),
+        midi_bytes(score, notes, midi_timing) if "midi" in formats else None,
+        musicxml_bytes(score, instruments, mark_uncertain) if "musicxml" in formats else None,
+    )
+    if "report" in formats:
+        text = review.build_report(score, events, **meta, midi_notes=notes)
+        paths.append(render.write_report(out_dir, stem, text))
+    return paths
 
 
 def _detect(ctx: RunContext, audio: ingest.AudioBuffer) -> list[DrumEvent]:

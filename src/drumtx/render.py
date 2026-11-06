@@ -77,21 +77,28 @@ def events_json(
 
 
 def write_outputs(
-    out_dir: Path, stem: str, csv_data: bytes, doc: dict[str, Any], midi: bytes, musicxml: bytes
+    out_dir: Path,
+    stem: str,
+    csv_data: bytes | None,
+    doc: dict[str, Any],
+    midi: bytes | None,
+    musicxml: bytes | None,
 ) -> list[Path]:
     """Write the MusicXML and MIDI files, the CSV, then the JSON that records the CSV's hash.
-    Each file is replaced atomically."""
+    None skips a file (`render` never writes the CSV). Each file is replaced atomically."""
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path, csv_path = event_paths(out_dir, stem)
     midi_path, musicxml_path = out_dir / f"{stem}.mid", out_dir / f"{stem}.musicxml"
-    for path, data in (
-        (musicxml_path, musicxml),
-        (midi_path, midi),
-        (csv_path, csv_data),
-        (json_path, (json.dumps(doc, indent=2) + "\n").encode()),
-    ):
-        _replace(path, data)
-    return [json_path, csv_path, midi_path, musicxml_path]
+    files = {
+        musicxml_path: musicxml,
+        midi_path: midi,
+        csv_path: csv_data,
+        json_path: (json.dumps(doc, indent=2) + "\n").encode(),
+    }
+    for path, data in files.items():
+        if data is not None:
+            _replace(path, data)
+    return [p for p in (json_path, csv_path, midi_path, musicxml_path) if files[p] is not None]
 
 
 def write_report(out_dir: Path, stem: str, text: str) -> Path:

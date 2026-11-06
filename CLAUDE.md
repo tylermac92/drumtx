@@ -15,8 +15,8 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M5-1, through PR #37.
-- **In review: M5-2, the `preview` command** (`synth.preview`; `schema.read_events` loads JSON or CSV events, for M5-3 too). Then M5-3 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M5-2, through PR #38.
+- **In review: M5-3, `render` from edited events** (`pipeline.rerender`, `beats.renumber`). Then M5-4 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
