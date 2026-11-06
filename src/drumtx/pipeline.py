@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 import logging
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from importlib.metadata import version
@@ -417,6 +418,7 @@ def run(ctx: RunContext, stages: Sequence[Stage] | None = None) -> dict[str, Any
 
     out: dict[str, Any] = {}
     for i, s in enumerate(stages, start=1):
+        start = time.perf_counter()
         if s.name in runs:
             out[s.name] = s.run(ctx, *(out[d] for d in s.deps))
             if s.cached:
@@ -434,5 +436,5 @@ def run(ctx: RunContext, stages: Sequence[Stage] | None = None) -> dict[str, Any
         else:
             status = "skipped: later stages are cached"
         log.info("[%d/%d] %-10s %s", i, len(stages), s.name.capitalize(), status)
-        log.debug("        key %s", keys[s.name])
+        log.debug("        key %s, %.2f s", keys[s.name], time.perf_counter() - start)
     return out

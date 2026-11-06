@@ -73,7 +73,7 @@ F-measure at 50 ms, without → with separation:
   - the tom numbers rest on 15 hits.
 
 **Runtime:**
-- **Separation:** 11.8 s per audio minute on the 4-core sandbox CPU (about 0.2× real time), on top of detection. The reference machine and `--device cuda` are not measured yet (M6-1).
+- **Separation:** 11.8 s per audio minute on the 4-core sandbox CPU (about 0.2× real time), on top of detection. M6-1 measured 12–15 s per audio minute again with `scripts/perf.py`, and peak memory of 3.7 GB for a 4-minute file and 8.6 GB for a 10-minute file, since the whole piece is separated at once (decision 0008). The reference machine and `--device cuda` are not measured yet.
 - **Memory:** the whole excerpt is processed at once, so memory grows with its length.
 
 **Recommendation:** keep `--separate` off by default (Q3). Try it on full mixes where the kick or toms are buried, and compare. Revisit after the M7-1 trial with your own recordings, and consider tuning thresholds for separated stems if it becomes the default.

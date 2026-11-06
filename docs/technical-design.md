@@ -355,6 +355,8 @@ The tool never claims a transcription is correct. Every report ends with a short
 
 ## 11. Performance
 
+Measured with `scripts/perf.py` (M6-1, decision 0008). On the 4-core cloud sandbox, which is slower than the reference laptop: 0.06× real time for a 4-minute track and 1.4 GB peak memory for a 10-minute file. With `--separate`: 0.32× real time, and 3.7 GB for 4 minutes and 8.6 GB for 10, because Open-Unmix separates the whole piece at once. The reference laptop run is still to do.
+
 | Item | Target | Approach |
 |---|---|---|
 | Runtime without separation | ≤ 1× real time on the reference laptop CPU (decision 0008: Intel Core i7-14700HX, 32 GB, Windows 11) | ONNX Runtime CPU inference; vectorized features; chunked inference with overlap. |

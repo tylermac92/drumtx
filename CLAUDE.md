@@ -15,10 +15,12 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M5-5, through PR #41.
-- **In review: M5-6, the event plot** (`plot.py`, `--plot`, the `[plot]` extra). Then M6-1 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M5-6, through PR #42.
+- **In review: M6-1, performance** (`scripts/perf.py`, decision 0008). Then M6-2 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
+- **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
+- **Separation memory** (M6-1): `--separate` peaks at 8.6 GB on a 10-minute file, because Open-Unmix runs on the whole piece. Chunking would fix it but changes the stem, so the separation accuracy would need checking again (decision 0008). No task is planned for it.
 - **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.
 - **Drummer review of the notation checklist** (M4-2): by the owner, if a drummer is available. Record it at the end of `docs/notation-checklist.md`.
 - **MuseScore 4 check:** open `tests/golden/triplet.musicxml` once in MuseScore 4, and a file written with `--mark-uncertain` to see the red notes. Record it in `docs/compatibility.md`.
@@ -100,6 +102,7 @@ The corpus lives in `~/drumtx-data`, outside the repo. A new cloud session start
 **Benchmark:**
 - **Dev run:** `uv run python scripts/benchmark.py --model adtof --compare eval/results/adtof-dev.json`.
 - **Test set:** only with `--release`, for M2-7 and M7-4 (decision 0004).
+- **Performance:** `uv run python scripts/perf.py AUDIO...` (decision 0008). Add `--separate` in an environment with the extra.
 - **Flag thresholds:** `uv run python scripts/tune_flags.py` (decision 0013). It caches detections and beats in `~/drumtx-data/flags-cache.json`.
 
 ## Rules that must hold
