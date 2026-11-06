@@ -1,5 +1,6 @@
 """M5-2: `drumtx preview` mixes the original audio with the events synthesized in place."""
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -70,12 +71,13 @@ def test_from_json_and_csv_with_overwrite_protection(tmp_path: Path) -> None:
 def test_bad_events(tmp_path: Path) -> None:
     wav = tmp_path / "in.wav"
     sf.write(wav, render(HITS, 4.0), SAMPLE_RATE)
-    bad = tmp_path / "bad.events.json"
-    bad.write_text(
-        '{"events": [{"time_s": 1, "class": "gong", "confidence": 1, "velocity": 9, '
-        '"quantized": null, "flags": []}]}'
+    doc = json.loads(
+        (Path(__file__).parents[1] / "docs/schema/examples/groove.events.json").read_text()
     )
+    doc["events"][3]["class"] = "gong"
+    bad = tmp_path / "bad.events.json"
+    bad.write_text(json.dumps(doc))
     code, err = preview(str(wav), str(bad))
-    assert code == 2 and "unknown class 'gong'" in err
+    assert code == 2 and "not a valid DrumTx events.json: $.events[3].class: 'gong'" in err
     code, err = preview(str(wav), str(tmp_path / "missing.csv"))
     assert code == 2 and "Cannot read" in err

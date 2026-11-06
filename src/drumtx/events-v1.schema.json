@@ -23,9 +23,9 @@
       "properties": {
         "file": { "type": "string", "minLength": 1 },
         "sha256": { "$ref": "#/$defs/sha256" },
-        "duration_s": { "type": "number", "exclusiveMinimum": 0 },
-        "start_s": { "type": ["number", "null"], "minimum": 0 },
-        "end_s": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+        "duration_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 86400 },
+        "start_s": { "type": ["number", "null"], "minimum": 0, "maximum": 86400 },
+        "end_s": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 86400 }
       }
     },
     "settings": { "type": "object" },
@@ -58,9 +58,9 @@
             "additionalProperties": false,
             "required": ["time_s", "measure", "beat"],
             "properties": {
-              "time_s": { "type": "number" },
-              "measure": { "type": "integer", "minimum": 0 },
-              "beat": { "type": "integer", "minimum": 1 }
+              "time_s": { "type": "number", "minimum": 0, "maximum": 86400 },
+              "measure": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "beat": { "type": "integer", "minimum": 1, "maximum": 16 }
             }
           }
         },
@@ -72,8 +72,8 @@
             "additionalProperties": false,
             "required": ["measure", "beats", "beat_type"],
             "properties": {
-              "measure": { "type": "integer", "minimum": 1 },
-              "beats": { "type": "integer", "minimum": 1 },
+              "measure": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+              "beats": { "type": "integer", "minimum": 1, "maximum": 16 },
               "beat_type": { "const": 4 }
             }
           }
@@ -90,7 +90,7 @@
         "additionalProperties": false,
         "required": ["time_s", "class", "confidence", "velocity", "quantized", "flags"],
         "properties": {
-          "time_s": { "type": "number", "minimum": 0 },
+          "time_s": { "type": "number", "minimum": 0, "maximum": 86400 },
           "class": { "enum": ["kick", "snare", "hihat", "tom", "cymbal"] },
           "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
           "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
@@ -102,8 +102,8 @@
                 "additionalProperties": false,
                 "required": ["measure", "beat", "grid", "slot", "residual_ms", "residual_frac"],
                 "properties": {
-                  "measure": { "type": "integer", "minimum": 0 },
-                  "beat": { "type": "integer", "minimum": 1 },
+                  "measure": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+                  "beat": { "type": "integer", "minimum": 1, "maximum": 16 },
                   "grid": { "enum": ["16th", "triplet"] },
                   "slot": { "type": "integer", "minimum": 1, "maximum": 4 },
                   "residual_ms": { "type": "number" },
@@ -127,7 +127,7 @@
         "additionalProperties": false,
         "required": ["measure", "flags"],
         "properties": {
-          "measure": { "type": "integer", "minimum": 0 },
+          "measure": { "type": "integer", "minimum": 0, "maximum": 1000000 },
           "flags": {
             "type": "array",
             "minItems": 1,

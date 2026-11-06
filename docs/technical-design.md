@@ -381,12 +381,14 @@ Measured with `scripts/perf.py` (M6-1, decision 0008). On the 4-core cloud sandb
 ### Security
 
 - Input files are untrusted:
-  - FFmpeg is invoked with argument lists, never through a shell.
+  - FFmpeg is invoked with argument lists, never through a shell. Its input is `file:` plus the absolute path, with `-protocol_whitelist file`, so a file name is never read as an option or a URL, and a playlist inside a file can't open the network (M6-3).
   - Decoders and FFmpeg are kept current.
   - Duration and size limits are enforced before full decode where possible.
+  - `events.json` is validated against its JSON Schema wherever it is read, with every time bounded to one day; `events.csv` rows are checked one by one (M6-3).
 - Model files are verified by SHA-256 before loading. Formats that execute code on load (such as pickle) are not used; models ship as ONNX or safetensors.
-- `transcribe` never overwrites existing files without `--force`, and never overwrites a hand-edited `events.csv`. `render` never modifies `events.csv`. Output paths are resolved and checked.
-- `pip-audit` runs in CI. Dependencies are pinned in a lock file used by CI and release builds.
+- `transcribe` never overwrites existing files without `--force`, and never overwrites a hand-edited `events.csv`. `render` never modifies `events.csv`. Output paths are resolved and checked: no output may be an input, even with `--force`. Files are written through a temporary file that is removed on any failure.
+- `pip-audit` runs in CI on every locked runtime dependency, extras included. Dependencies are pinned in a lock file used by CI and release builds.
+- `docs/security-checklist.md` records the review (M6-3).
 
 ## 13. Key technical risks and trade-offs
 

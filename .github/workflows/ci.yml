@@ -6,6 +6,17 @@ on:
   pull_request:
 
 jobs:
+  # Known vulnerabilities in the locked runtime dependencies, both extras included (M6-3).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: >
+          uv export --frozen --all-extras --no-dev --no-emit-project --format requirements-txt
+          -o "${{ runner.temp }}/requirements.txt"
+      - run: uvx pip-audit==2.9.0 -r "${{ runner.temp }}/requirements.txt" --disable-pip --progress-spinner off
+
   test:
     strategy:
       fail-fast: false

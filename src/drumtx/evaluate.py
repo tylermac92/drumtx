@@ -10,7 +10,6 @@ counts as wrong; `accuracy_matched` leaves those out.
 """
 
 import csv
-import json
 import warnings
 from collections import Counter
 from dataclasses import dataclass, field
@@ -22,7 +21,14 @@ import mir_eval
 import numpy as np
 
 from drumtx.errors import InputError
-from drumtx.schema import CLASSES, DrumClass, DrumEvent, event_from_json, read_events_csv
+from drumtx.schema import (
+    CLASSES,
+    DrumClass,
+    DrumEvent,
+    event_from_json,
+    read_events_csv,
+    read_events_json,
+)
 
 DEFAULT_TOLERANCES_MS = (50.0, 30.0)
 DRUM_CHANNEL = 9  # MIDI channel 10, counted from 0
@@ -75,15 +81,11 @@ def load_prediction(path: Path) -> Track:
     """An events.json (with its tempo map's beats) or an events.csv."""
     if path.suffix.lower() == ".csv":
         return Track(_from_events(read_events_csv(path)))
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-        events = [event_from_json(e) for e in doc["events"]]
-        beats = [(float(b["time_s"]), int(b["beat"])) for b in doc["tempo_map"]["beats"]]
-    except OSError as e:
-        raise InputError(f"Cannot read {path}: {e.strerror}") from e
-    except (ValueError, KeyError, TypeError) as e:
-        raise InputError(f"{path.name} is not a DrumTx events.json file ({e!r}).") from e
-    return from_score(events, beats)
+    doc = read_events_json(path)
+    events = [event_from_json(e) for e in doc["events"]]
+    return from_score(
+        events, [(float(b["time_s"]), int(b["beat"])) for b in doc["tempo_map"]["beats"]]
+    )
 
 
 def load_score(path: Path) -> Track:

@@ -4,9 +4,11 @@ Needs the `[plot]` extra (matplotlib), imported only for --plot. Drawn on a matp
 directly, so no display or GUI backend is needed.
 """
 
+import io
 from pathlib import Path
 
 from drumtx.errors import MissingDependencyError, install_hint
+from drumtx.render import write_atomic
 from drumtx.review import measure_times
 from drumtx.schema import CLASSES, QuantizedScore
 
@@ -60,7 +62,7 @@ def write_plot(score: QuantizedScore, path: Path) -> Path:
         loc="outside right upper",
         fontsize=7,
     )
-    tmp = path.with_name(path.name + ".tmp")
-    fig.savefig(tmp, dpi=100, format="png")
-    tmp.replace(path)
+    png = io.BytesIO()
+    fig.savefig(png, dpi=100, format="png")
+    write_atomic(path, png.getvalue())
     return path
