@@ -1,0 +1,53 @@
+{
+  "machine": {
+    "platform": "Linux-6.18.44-fc-v242-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "cpus": 4,
+    "python": "3.12.3"
+  },
+  "commit": "91d4309cd676657a010ff3c7e4623bccda9472ee+dirty",
+  "date": "2026-11-06",
+  "runs": 1,
+  "files": [
+    {
+      "file": "mix4min.wav",
+      "audio_s": 240.0,
+      "separate": true,
+      "wall_s": 77.13,
+      "realtime_factor": 0.3214,
+      "runs_s": [
+        77.13
+      ],
+      "stages_s": {
+        "Ingest": 0.39,
+        "Separate": 57.91,
+        "Detect": 4.76,
+        "Track": 11.44,
+        "Quantize": 0.1,
+        "Render": 0.1,
+        "Report": 0.01
+      },
+      "peak_mb": 3742
+    },
+    {
+      "file": "mix10min.wav",
+      "audio_s": 600.0,
+      "separate": true,
+      "wall_s": 144.06,
+      "realtime_factor": 0.2401,
+      "runs_s": [
+        144.06
+      ],
+      "stages_s": {
+        "Ingest": 0.46,
+        "Separate": 116.93,
+        "Detect": 5.18,
+        "Track": 19.15,
+        "Quantize": 0.08,
+        "Render": 0.34,
+        "Report": 0.02
+      },
+      "peak_mb": 8572
+    }
+  ]
+}

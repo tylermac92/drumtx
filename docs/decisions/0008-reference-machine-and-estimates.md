@@ -104,3 +104,39 @@ These are only needed if something goes wrong or you choose to do them:
 ### Biggest uncertainties
 
 M2-6 (separation install), M3-1 (matching upstream beats), M4-2 (readability) and M7-2 (trial fixes) have the widest ranges. Re-estimate after M1, when the real pace on this codebase is known.
+
+## M6-1: measurements (2026-11-06)
+
+`scripts/perf.py` runs `drumtx transcribe --no-cache -v` in a fresh process per run, times it from start to exit, and reads each stage's time from `-v`. The process reports its own peak memory: resident set on Linux and macOS, peak working set on Windows. Results go to `eval/results/perf-<machine>.json` and `.md`.
+
+**On the 4-core cloud sandbox** (Xeon at 2.1 GHz, Linux; `eval/results/perf-sandbox.md`). The test files are MDB Drums full mixes joined end to end, stereo, 44.1 kHz; they are used locally and never committed. Median of 3 runs:
+
+| File | Wall time | Real-time factor | Peak memory | Detect | Track |
+|---|---|---|---|---|---|
+| 4 minutes | 14.3 s | **0.060** | 1,237 MB | 2.5 s | 11.3 s |
+| 10 minutes | 27.7 s | 0.046 | **1,398 MB** | 5.8 s | 21.1 s |
+
+Both targets hold: 0.06× real time against ≤ 1×, and 1.4 GB against < 2 GB. Ingest, quantize, render and the report take 0.5 s together.
+
+**Where the time and memory go:**
+- **Time:** beat tracking takes about three quarters of it, the Beat This! transformer on 30-second chunks. Detection takes most of the rest. Nothing was optimized: the target holds by a factor of 16 on a machine slower than the reference laptop.
+- **Memory:** sampling a 10-minute run shows about 240 MB after decoding, 750 MB at the peak of detection, and **1.3 GB at the peak of beat tracking**. It falls back to about 400 MB afterwards. The beat-tracking peak is ONNX Runtime's working memory for one 30-second chunk, so it hardly depends on the length of the audio: 1.24 GB at 4 minutes, 1.40 GB at 10. Features are already computed in chunks.
+
+**With `--separate`** (`eval/results/perf-sandbox-separate.md`, one run each, CPU PyTorch):
+
+| File | Wall time | Real-time factor | Separate | Peak memory |
+|---|---|---|---|---|
+| 4 minutes | 77.1 s | 0.32 | 57.9 s | 3,742 MB |
+| 10 minutes | 144.1 s | 0.24 | 116.9 s | **8,572 MB** |
+
+- **Time:** separation adds 12–15 s per audio minute, as the model card found (11.8 s, M2-6). With it, a run still takes about a quarter to a third of real time on the sandbox. `--device cuda` is for the reference laptop's GPU and is not measured.
+- **Memory:** separation runs Open-Unmix on the whole piece at once, so its memory grows with the length: 3.7 GB for 4 minutes, 8.6 GB for 10. The 2 GB target covers runs without separation only, but a 10-minute file would not fit on an 8 GB laptop. Separating in chunks would bound it. That changes the separated audio at the chunk edges, so it would need the separation accuracy checked again. It is left as an open item, not done here.
+
+**On the reference laptop:** not measured yet; it's an open item for the owner. Plug in, set Windows to best performance, download the models, and run:
+
+```bash
+uv run python scripts/perf.py song-4min.wav song-10min.wav
+uv run --extra separation python scripts/perf.py song-4min.wav --separate --runs 1
+```
+
+The results land in `eval/results/perf-<laptop name>.md`; commit them. Expect it to be faster than the sandbox. If the 4-minute track takes more than 0.25× real time, also check a 4-thread run, as planned above.

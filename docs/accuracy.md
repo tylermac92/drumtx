@@ -66,7 +66,7 @@ F-measure at 50 ms on the 11 full-mix test clips, at `balanced`:
 | Without | 0.84 | 0.72 | **0.76** | 0.47 | **0.85** |
 | With `--separate` | **0.90** | **0.79** | 0.74 | **0.51** | 0.82 |
 
-Separation improves kick and snare on full mixes and costs a little hi-hat and cymbal. It also adds about 13 s of processing per minute of audio on a 4-core CPU, and needs the `[separation]` extra (`docs/models/umxl-drums.md`). It is off by default; try it on busy mixes.
+Separation improves kick and snare on full mixes and costs a little hi-hat and cymbal. It also adds about 13 s of processing per minute of audio on a 4-core CPU and needs a lot of memory: about 9 GB for a 10-minute file (decision 0008). It needs the `[separation]` extra (`docs/models/umxl-drums.md`). It is off by default; try it on busy mixes.
 
 ## Confidence
 
