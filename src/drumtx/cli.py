@@ -1,5 +1,6 @@
 """DrumTx command-line interface."""
 
+import io
 import json
 import logging
 import math
@@ -246,7 +247,7 @@ def transcribe(
         if plot_png:
             plot.check_installed()
         mapping.load(mapping_file)  # a bad mapping fails here, naming each bad key
-        render.check_outputs(config.out_dir, audio.stem, force)  # before any slow work
+        render.check_outputs(config.out_dir, audio.stem, force, audio)  # before any slow work
         pipeline.run(pipeline.RunContext.create(config))
 
     _run(verbose, work)
@@ -445,18 +446,17 @@ def preview(
     path = out or events.with_name(f"{audio.stem}.preview.wav")
 
     def work() -> None:
+        if path.resolve() in (audio.resolve(), events.resolve()):
+            raise InputError(f"-o {path} would overwrite an input. Choose another file.")
         if path.exists() and not force:
             raise InputError(f"{path} already exists. Use --force to overwrite.")
         hits = schema.read_events(events)
         # The whole file, whatever excerpt was transcribed: event times are source-file times.
         original = ingest.load_audio(audio, max_duration=math.inf).mono
         mix = synth.preview(original, hits, split_stereo)
-        tmp = path.with_name(path.name + ".tmp")
-        try:
-            sf.write(tmp, mix, ingest.SAMPLE_RATE, subtype="PCM_16", format="WAV")
-            tmp.replace(path)
-        except (OSError, sf.LibsndfileError) as e:
-            raise InputError(f"Cannot write {path}: {e}") from e
+        wav = io.BytesIO()
+        sf.write(wav, mix, ingest.SAMPLE_RATE, subtype="PCM_16", format="WAV")
+        render.write_atomic(path, wav.getvalue())
         log.info("%s: %d hits over %s", path, len(hits), audio.name)
 
     _run(verbose, work)
