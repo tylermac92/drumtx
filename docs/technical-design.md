@@ -307,7 +307,7 @@ Candidates marked "decide in M0" depend on the licensing and spike results.
 
 ## 9. Quality assessment and correction workflow
 
-Accuracy will vary by recording. The workflow lets users find errors quickly instead of assuming correctness.
+Accuracy will vary by recording. The workflow lets users find errors quickly instead of assuming correctness. `docs/correction-guide.md` walks through it on an example recording (M5-5).
 
 1. **Read `report.md`.** It lists flagged measures with audio timestamps, the estimated tempo and its stability, per-class counts, and the settings used.
 2. **Listen with `drumtx preview`.** Hearing synthesized hits against the original is the fastest way to spot misses, false hits, and wrong classes. The `--split-stereo` option plays the original on the left channel and the detected hits on the right.
