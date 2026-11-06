@@ -120,7 +120,10 @@ The corpus lives in `~/drumtx-data`, outside the repo. A new cloud session start
   | Code | Meaning | Raised by |
   |---|---|---|
   | 0 | OK | |
-  | 1 | Unexpected error | |
+  | 1 | Unexpected error (a bug) | any other exception |
   | 2 | Input error | `InputError` |
   | 3 | Missing dependency or model | `MissingDependencyError` |
   | 4 | Processing failure | `ProcessingError` |
+  | 130 | Interrupted (Ctrl-C) | `KeyboardInterrupt` |
+
+  `cli._run` also maps `OSError` to 2, and `MemoryError` and ONNX Runtime errors to 4 (M6-2). `tests/test_errors.py` checks this table against the design doc's.

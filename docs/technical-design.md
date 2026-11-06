@@ -167,10 +167,13 @@ Note: automatic transcription contains errors. Check flagged measures first.
 | Code | Meaning |
 |---|---|
 | 0 | Success. Includes runs with warnings, such as "no drum events detected". |
-| 2 | Usage or input error: bad option, unreadable or unsupported file, too long or too short, output exists without `--force`. |
-| 3 | Missing dependency: FFmpeg, an optional extra, or a model while `--offline`. |
-| 4 | Processing failure, such as model inference failing or a model file failing its SHA-256 check. |
-| 1 | Unexpected internal error. Message points to `-v` and bug reporting. |
+| 1 | Unexpected internal error: a bug. The message points to `-v` and bug reporting. |
+| 2 | Usage or input error: a bad option, an unreadable or unsupported file, audio too long or too short, outputs that exist without `--force`, bad rows in an events file, or a file or folder that can't be read or written (no permission, a file in the way, a full disk). |
+| 3 | Missing dependency: FFmpeg, an optional extra (`[separation]`, `[plot]`), uv for converting a model, a model that can't be downloaded or is missing with `--offline`, or no CUDA GPU for `--device cuda`. |
+| 4 | Processing failure: a model file fails its SHA-256 check or can't be converted, running a model fails, or memory runs out. |
+| 130 | Interrupted (Ctrl-C). Outputs are replaced one file at a time, atomically, so none is left half-written. |
+
+Every error is one line starting with `Error:` (or `Unexpected error:` for code 1), saying what is wrong and what to do. There is no traceback unless `-v` is given. `tests/test_errors.py` runs one case per code and checks this table against them (M6-2).
 
 ## 5. Output formats
 
