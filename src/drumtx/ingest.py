@@ -131,10 +131,17 @@ def _excerpt(
     return first, last
 
 
+def _ffmpeg_input(path: Path) -> list[str]:
+    """`-i` for an untrusted file: a local file only. `file:` and the absolute path stop a name
+    like `-x.m4a` or `http:x.m4a` being read as an option or a URL, and the whitelist stops a
+    playlist inside the file from opening anything but local files (no network access)."""
+    return ["-protocol_whitelist", "file", "-i", f"file:{path.resolve()}"]
+
+
 def _probe(path: Path) -> tuple[int, float, int]:
     """Sample rate, duration and channel count of the first audio stream, from ffprobe."""
-    cmd = ["ffprobe", "-v", "error", "-select_streams", "a:0", "-of", "json"]
-    cmd += ["-show_entries", "stream=sample_rate,channels:format=duration", str(path)]
+    cmd = ["ffprobe", "-v", "error", *_ffmpeg_input(path), "-select_streams", "a:0", "-of", "json"]
+    cmd += ["-show_entries", "stream=sample_rate,channels:format=duration"]
     run = subprocess.run(cmd, capture_output=True, text=True)
     try:
         info = json.loads(run.stdout)
@@ -151,7 +158,7 @@ def _probe(path: Path) -> tuple[int, float, int]:
 def _ffmpeg_decode(path: Path, channels: int, first: float, last: float) -> np.ndarray:
     """Decode at the file's own sample rate, as 32-bit float."""
     cmd = ["ffmpeg", "-nostdin", "-v", "error", "-ss", f"{first}", "-t", f"{last - first}"]
-    cmd += ["-i", str(path), "-map", "0:a:0", "-ac", str(channels), "-f", "f32le", "-"]
+    cmd += [*_ffmpeg_input(path), "-map", "0:a:0", "-ac", str(channels), "-f", "f32le", "-"]
     run = subprocess.run(cmd, capture_output=True)
     if run.returncode != 0 or not run.stdout:
         lines = run.stderr.decode(errors="replace").strip().splitlines()

@@ -38,6 +38,7 @@ from drumtx.schema import (
     event_from_json,
     event_to_json,
     read_events,
+    read_events_json,
     tempo_map_from_json,
 )
 from drumtx.separate import SEPARATOR, Device, isolate_drums
@@ -248,18 +249,13 @@ def rerender(
     stem = events_path.name.removesuffix(events_path.suffix).removesuffix(".events")
     out_dir = events_path.parent
     json_path = render.event_paths(out_dir, stem)[0]
-    try:
-        doc = json.loads(json_path.read_text(encoding="utf-8"))
-        stored = tempo_map_from_json(doc["tempo_map"])
-        source, models_, settings, csv_sha256 = (
-            doc[k] for k in ("source", "models", "settings", "csv_sha256")
-        )
-    except OSError as e:
-        raise InputError(
-            f"Cannot read {json_path} ({e.strerror}): render takes the tempo map from it."
-        ) from e
-    except (ValueError, KeyError, TypeError) as e:
-        raise InputError(f"{json_path.name} is not a DrumTx events.json file ({e!r}).") from e
+    if not json_path.is_file():
+        raise InputError(f"Cannot read {json_path}: render takes the tempo map from it.")
+    doc = read_events_json(json_path)
+    stored = tempo_map_from_json(doc["tempo_map"])
+    source, models_, settings, csv_sha256 = (
+        doc[k] for k in ("source", "models", "settings", "csv_sha256")
+    )
     # From events.json, `merged` stays: the hits merged away are not in the file to merge again.
     events = [dataclasses.replace(e, quantized=None) for e in read_events(events_path)]
     tm = beats.renumber(stored, first_downbeat, beats_per_bar)
@@ -423,9 +419,7 @@ def run(ctx: RunContext, stages: Sequence[Stage] | None = None) -> dict[str, Any
             out[s.name] = s.run(ctx, *(out[d] for d in s.deps))
             if s.cached:
                 ctx.cache_dir.mkdir(parents=True, exist_ok=True)
-                tmp = path(s).with_suffix(".tmp")  # a crash mid-write leaves no partial entry
-                tmp.write_bytes(s.dump(out[s.name]))
-                tmp.replace(path(s))
+                render.write_atomic(path(s), s.dump(out[s.name]))  # never a partial entry
                 for old in ctx.cache_dir.glob(f"{s.name}-*{s.suffix}"):  # one entry per stage
                     if old != path(s):
                         old.unlink()

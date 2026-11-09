@@ -148,7 +148,7 @@ def bad_files(tmp_path: Path) -> dict[str, Path]:
         (["render", "{corrupt.events.json}"], "is not a DrumTx events.json"),
         (["render", "{groove}", "--first-downbeat", "-1"], "--first-downbeat must be 0 or more"),
         (["preview", "{wav}", "{missing}.events.json"], "Cannot read"),
-        (["preview", "{wav}", "{ref}", "-o", "{missing}/x.wav"], "Cannot write"),
+        (["preview", "{wav}", "{ref}", "-o", "{missing}/x.wav"], "Cannot read or write"),
     ],
 )
 def test_input_errors(args: list[str], message: str, wav: Path, tmp_path: Path) -> None:
@@ -168,7 +168,9 @@ def test_input_errors(args: list[str], message: str, wav: Path, tmp_path: Path) 
 def test_csv_time_must_be_a_time(tmp_path: Path) -> None:
     path = tmp_path / "e.csv"
     path.write_text("time_s,class,confidence,velocity\nnan,kick,,\n-1,snare,,\n")
-    with pytest.raises(InputError, match=r"line 2: time_s nan is not a time\n  line 3: time_s -1"):
+    with pytest.raises(
+        InputError, match=r"line 2: time_s nan is not a time \(0 to 86400 s\)\n  line 3: time_s -1"
+    ):
         read_events_csv(path)
 
 

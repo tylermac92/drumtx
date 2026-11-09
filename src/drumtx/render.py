@@ -27,8 +27,9 @@ def plot_path(out_dir: Path, stem: str) -> Path:
     return out_dir / f"{stem}.plot.png"
 
 
-def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
-    """Refuse to start a run whose outputs would overwrite files it must not."""
+def check_outputs(out_dir: Path, stem: str, force: bool, source: Path) -> None:
+    """Refuse to start a run whose outputs would overwrite files it must not: existing outputs
+    without --force, an edited events.csv, and ever the source audio itself."""
     json_path, csv_path = event_paths(out_dir, stem)
     others = (
         out_dir / f"{stem}.mid",
@@ -36,7 +37,13 @@ def check_outputs(out_dir: Path, stem: str, force: bool) -> None:
         report_path(out_dir, stem),
         plot_path(out_dir, stem),
     )
-    existing = [p for p in (json_path, csv_path, *others) if p.exists()]
+    outputs = (json_path, csv_path, *others)
+    if source.resolve() in {p.resolve() for p in outputs}:
+        raise InputError(
+            f"An output would overwrite {source.name} itself. Rename it, or choose another "
+            "folder with -o."
+        )
+    existing = [p for p in outputs if p.exists()]
     if existing and not force:
         names = ", ".join(p.name for p in existing)
         raise InputError(f"{names} already exists in {out_dir}. Use --force to overwrite.")
@@ -106,18 +113,23 @@ def write_outputs(
     }
     for path, data in files.items():
         if data is not None:
-            _replace(path, data)
+            write_atomic(path, data)
     return [p for p in (json_path, csv_path, midi_path, musicxml_path) if files[p] is not None]
 
 
 def write_report(out_dir: Path, stem: str, text: str) -> Path:
     path = report_path(out_dir, stem)
-    _replace(path, text.encode())
+    write_atomic(path, text.encode())
     return path
 
 
-def _replace(path: Path, data: bytes) -> None:
-    """Write atomically."""
+def write_atomic(path: Path, data: bytes) -> None:
+    """Write `data` to a file beside `path`, then replace `path` with it. On any failure, Ctrl-C
+    included, the temporary file is removed and `path` is left as it was."""
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    try:
+        tmp.write_bytes(data)
+        tmp.replace(path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise

@@ -23,6 +23,10 @@ EventFlag = Literal["uncertain", "merged"]
 MeasureFlag = Literal["uncertain", "off_grid", "tempo", "merged"]
 
 CSV_COLUMNS = ("time_s", "class", "confidence", "velocity")
+SCHEMA_FILE = Path(__file__).with_name("events-v1.schema.json")
+MAX_TIME_S = (
+    86_400.0  # a day: beyond any recording, and small enough to keep grid arithmetic finite
+)
 # Blank `confidence` and `velocity` cells (rows added by hand) are read as these.
 CSV_DEFAULT_CONFIDENCE = 1.0
 CSV_DEFAULT_VELOCITY = 100
@@ -146,8 +150,8 @@ def read_events_csv(path: Path) -> list[DrumEvent]:
             vel = int(row.get("velocity") or CSV_DEFAULT_VELOCITY)
             if row["class"] not in CLASSES:
                 raise ValueError(f"unknown class {row['class']!r}")
-            if not (math.isfinite(time_s) and time_s >= 0):
-                raise ValueError(f"time_s {row['time_s']} is not a time")
+            if not (math.isfinite(time_s) and 0 <= time_s <= MAX_TIME_S):
+                raise ValueError(f"time_s {row['time_s']} is not a time (0 to {MAX_TIME_S:g} s)")
             if not 0 <= conf <= 1 or not 1 <= vel <= 127:
                 raise ValueError("confidence must be 0–1 and velocity 1–127")
         except (TypeError, ValueError) as e:
@@ -160,17 +164,31 @@ def read_events_csv(path: Path) -> list[DrumEvent]:
     return sorted(events, key=lambda e: (e.time_s, CLASSES.index(e.cls)))
 
 
+def read_events_json(path: Path) -> dict[str, Any]:
+    """An events.json, checked against the schema first: people edit these files and pass them
+    around, so every field is validated before DrumTx computes with it (M6-3)."""
+    from jsonschema import Draft202012Validator
+    from jsonschema.exceptions import best_match
+
+    def no_constant(name: str) -> None:  # NaN and Infinity are not JSON, though Python reads them
+        raise ValueError(f"{name} is not a number")
+
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"), parse_constant=no_constant)
+    except OSError as e:
+        raise InputError(f"Cannot read {path}: {e.strerror}") from e
+    except ValueError as e:
+        raise InputError(f"{path.name} is not a DrumTx events.json file: {e}") from e
+    schema = json.loads(SCHEMA_FILE.read_text(encoding="utf-8"))
+    if (error := best_match(Draft202012Validator(schema).iter_errors(doc))) is not None:
+        raise InputError(
+            f"{path.name} is not a valid DrumTx events.json: {error.json_path}: {error.message}"
+        )
+    return doc  # type: ignore[no-any-return]
+
+
 def read_events(path: Path) -> list[DrumEvent]:
     """The events of an events.json (the score, positions and flags included) or an events.csv."""
     if path.suffix.lower() == ".csv":
         return read_events_csv(path)
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-        events = [event_from_json(e) for e in doc["events"]]
-        if bad := sorted({e.cls for e in events} - set(CLASSES)):
-            raise ValueError(f"unknown class {bad[0]!r}")
-        return events
-    except OSError as e:
-        raise InputError(f"Cannot read {path}: {e.strerror}") from e
-    except (ValueError, KeyError, TypeError) as e:
-        raise InputError(f"{path.name} is not a DrumTx events.json file ({e!r}).") from e
+    return [event_from_json(e) for e in read_events_json(path)["events"]]

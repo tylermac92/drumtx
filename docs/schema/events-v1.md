@@ -2,7 +2,7 @@
 
 DrumTx writes every run's detected hits to two files, `<name>.events.json` and `<name>.events.csv`.
 
-- **`events.json`** is the authoritative record of a run. Its JSON Schema is [`src/drumtx/events-v1.schema.json`](../../src/drumtx/events-v1.schema.json), which ships inside the package.
+- **`events.json`** is the authoritative record of a run. Its JSON Schema is [`src/drumtx/events-v1.schema.json`](../../src/drumtx/events-v1.schema.json), which ships inside the package. `render`, `preview` and `evaluate` validate every `events.json` against it before use, and name the first field that fails, such as `$.events[3].class` (M6-3). The schema bounds times to one day (86,400 s), measure numbers to 1,000,000 and beats per bar to 16. `NaN` and `Infinity` are not allowed. `events.csv` times have the same one-day bound.
 - **`events.csv`** holds the same hits in four columns, for editing in a spreadsheet. It keeps every detected hit, including the few that `events.json` leaves out: hits merged into another in the same slot, and hits before measure 0 (see [Events](#events)).
 
 The Python types for these contracts are in [`src/drumtx/schema.py`](../../src/drumtx/schema.py): `DrumEvent`, `Position`, `TempoMap` (with `Beat` and `TimeSignature`), `MeasureFlags` and `QuantizedScore`. Their field names match the JSON keys, with one exception: `DrumEvent.cls` is `class` in JSON and CSV. Tests keep the types, the schema and the examples in step.
