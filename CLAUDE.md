@@ -13,7 +13,7 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 | `docs/compatibility.md` | Notation apps checked, and the MuseScore check script |
 | `docs/models/` | Model cards |
 | `docs/cli.md` | CLI reference, generated: `uv run typer drumtx.cli utils docs --name drumtx --output docs/cli.md` after changing a command or option (`tests/test_docs.py` checks it) |
-| `docs/trial.md` | The M7-1 personal trial: steps, severity scale, and the log of recordings, timings and issues |
+| `docs/trial.md` | The M7-1 personal trial: steps, severity scale, and the log of recordings and issues |
 | `docs/correction-guide.md`, `docs/troubleshooting.md`, `docs/privacy.md`, `docs/security-checklist.md` | User guides, and the security review |
 
 User pages' `bash` blocks are run by `tests/test_docs.py`, in order: keep them runnable, with real values, not placeholders.
@@ -21,10 +21,10 @@ User pages' `bash` blocks are run by `tests/test_docs.py`, in order: keep them r
 ## Status (2026-11-09)
 
 - **Done and merged:** M0 to M6-6, the CI fixes and the Beat This! conversion fix, through PR #50.
-- **In review: M7-1, the trial page** (`docs/trial.md`). The trial itself is the owner's (below). M7-2 starts from its results; then M7-3 and so on, in the order of `docs/milestone-tasks.md`.
+- **In review: M7-1, the trial page** (`docs/trial.md`): a listening trial, the owner's (below). Next: M7-1b, the browser hit editor, because correcting by editing `events.csv` proved too hard (trial issue 1). Then M7-2 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
-- **Personal trial** (M7-1): the owner follows `docs/trial.md` on 5–10 of their own recordings, times at least two, and fills in its tables. M7-2 fixes its issues.
+- **Personal trial** (M7-1): the owner follows `docs/trial.md` on 5–10 of their own recordings: listen to each draft, rate it, and log issues. M7-2 fixes them.
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
 - **Separation memory** (M6-1): `--separate` peaks at 8.6 GB on a 10-minute file, because Open-Unmix runs on the whole piece. Chunking would fix it but changes the stem, so the separation accuracy would need checking again (decision 0008). No task is planned for it.
 - **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.

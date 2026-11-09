@@ -419,20 +419,29 @@ For every task, including those with no code (reviews, spikes, estimates, trial)
 **Goal:** Use DrumTx on your own recordings, fix the most important problems, and tag v0.1 with an honest accuracy record.
 
 **M7-1 — Personal trial**
-- *Description:* Transcribe 5–10 of your own recordings across styles, following the correction guide. On at least two tracks, time correcting the draft against transcribing by hand.
+- *Description:* Transcribe 5–10 of your own recordings across styles, listen to each draft with `preview`, and log what sounds wrong (`docs/trial.md`). This is a listening trial. Correcting by editing `events.csv` proved too hard without transcription experience, so correcting and its timing move to M7-1b.
 - *Acceptance criteria:*
+  - Every recording is rated (usable, needs work, unusable), and full mixes are rated with and without `--separate`.
   - Issues are logged and ranked by severity.
-  - The timings are recorded against the correction-effort measure in the brief.
 - *Dependencies:* M6.
 
+**M7-1b — Browser hit editor**
+- *Description:* A command writes one self-contained HTML page for a transcription. It shows the waveform, the hits on one lane per class, and the bar lines. It plays the recording with the hits synthesized over it, and lets you add, delete and reclassify hits with the mouse. It saves an `events.csv` that `drumtx render` reads. Local only: no server, no network.
+- *Acceptance criteria:*
+  - The guide's example can be corrected end to end in the editor, with no CSV or notation editing, and the result matches `groove.truth.csv`.
+  - The saved CSV is validated by `render` as usual; the editor never overwrites a file.
+  - The correction guide describes the editor as the main route, with the CSV kept as the alternative.
+  - The correction-effort measure in the brief is timed on at least two of your own recordings.
+- *Dependencies:* M7-1.
+
 **M7-2 — Trial fixes and re-tuning**
-- *Description:* Fix top-priority issues. Re-tune presets and flag thresholds using only the development set, plus annotated clips from the trial added to the development set.
+- *Description:* Fix top-priority issues. Re-tune presets and flag thresholds using only the development set, plus any trial recordings corrected in the editor (M7-1b) added to the development set.
 - *Acceptance criteria:*
   - All severity-1 issues are closed.
   - Q3 (separation on by default?) is re-decided from the trial results and recorded.
   - The benchmark shows no regressions on the development set.
   - The test set remains untouched until M7-4.
-- *Dependencies:* M7-1.
+- *Dependencies:* M7-1, M7-1b.
 
 **M7-3 — Release engineering**
 - *Description:* Semantic versioning, changelog, and a release checklist. Nothing is published (decision 0001).

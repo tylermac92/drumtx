@@ -72,7 +72,7 @@ Code is written with Claude Code, as in M0. Ranges run from "goes as planned" to
 | M6-4 Privacy verification | 0.5–1 | Offline full-pipeline CI test. |
 | M6-5 `doctor` and cross-platform polish | 1–2 | Windows path issues; CI with and without FFmpeg. |
 | M6-6 Documentation set | 1.5–3 | Includes a docs check that runs every command. |
-| M7-1 Personal trial | 3–5 | 5–10 recordings, two of them also transcribed by hand for the timing comparison. |
+| M7-1 Personal trial | 3–5 | 5–10 recordings, listened to and rated. Correcting and its timing moved to M7-1b, the browser editor (added after the estimate). |
 | M7-2 Trial fixes and re-tuning | 3–6 | Unknown until the trial; the range is a budget. |
 | M7-3 Release engineering | 0.5–1 | Changelog, checklist, wheel smoke test. |
 | M7-4 Final evaluation and accuracy statement | 0.5–1 | One release-build test-set run and the write-up. |
