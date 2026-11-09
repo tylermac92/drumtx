@@ -14,7 +14,7 @@ from typing import Any, Literal, Protocol
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from drumtx import features
+from drumtx import features, models
 from drumtx.ingest import SAMPLE_RATE, AudioBuffer
 from drumtx.schema import CLASSES, DrumClass, DrumEvent
 
@@ -144,9 +144,7 @@ class ModelDetector:
     """The ADTOF Frame_RNN model as ONNX, from `drumtx models download adtof`."""
 
     def __init__(self, path: Path) -> None:
-        import onnxruntime as ort
-
-        self.session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        self.session = models.onnx_session(path)
         self.presets: dict[str, Any] = json.loads(MODEL_PRESETS_FILE.read_text("utf-8"))
 
     def activations(self, spectrogram: np.ndarray) -> dict[DrumClass, np.ndarray]:

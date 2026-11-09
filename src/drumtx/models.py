@@ -20,6 +20,7 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from drumtx.errors import InputError, MissingDependencyError, ProcessingError
 
@@ -156,6 +157,15 @@ def cache_dir() -> Path:
     else:
         base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "drumtx"
     return base / "models"
+
+
+def onnx_session(path: Path, options: Any = None) -> Any:
+    """An ONNX Runtime session on the CPU, with ONNX Runtime's own telemetry switched off: its
+    Windows builds log usage events by default (M6-4, design §12)."""
+    import onnxruntime as ort
+
+    ort.disable_telemetry_events()
+    return ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
 
 
 def spec(model_id: str) -> Model:

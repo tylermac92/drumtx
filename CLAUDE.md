@@ -15,8 +15,8 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M6-2, through PR #44.
-- **In review: M6-3, security review** (`docs/security-checklist.md`, `tests/test_security.py`, the CI `audit` job). Then M6-4 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M6-3, through PR #45.
+- **In review: M6-4, privacy** (`docs/privacy.md`, `tests/test_privacy.py`, `models.onnx_session`). Then M6-5 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
@@ -115,6 +115,7 @@ The corpus lives in `~/drumtx-data`, outside the repo. A new cloud session start
   - Run Python that reads them with `-I`.
   - Don't install packages from git sources.
 - **Never overwrite user files:** `transcribe` must not overwrite outputs without `--force`, and never an `events.csv` the user has edited. No output may be an input. Write files with `render.write_atomic`.
+- **No network except model downloads:** create ONNX Runtime sessions with `models.onnx_session` (telemetry off). `tests/test_privacy.py` fails on any socket, URL or subprocess in an offline run (M6-4).
 - **Validate what you read:** `events.json` through `schema.read_events_json` (the JSON Schema), CSV rows one by one, and FFmpeg input through `ingest._ffmpeg_input` (local files only). `docs/security-checklist.md` lists the rest (M6-3).
 - **Exit codes:**
 

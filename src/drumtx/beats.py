@@ -14,6 +14,7 @@ import numpy as np
 import soxr
 from numpy.lib.stride_tricks import sliding_window_view
 
+from drumtx import models
 from drumtx.ingest import SAMPLE_RATE
 from drumtx.schema import Beat, TempoMap, TimeSignature
 
@@ -86,7 +87,7 @@ class BeatTracker:
 
         options = ort.SessionOptions()
         options.enable_cpu_mem_arena = False  # 0.5 GB less peak memory, for 8% more time
-        self.session = ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
+        self.session = models.onnx_session(path, options)
 
     def logits(self, spect: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Beat and downbeat logits per frame, from overlapping 30 s chunks (keep_first)."""

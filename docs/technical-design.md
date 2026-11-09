@@ -372,8 +372,10 @@ Measured with `scripts/perf.py` (M6-1, decision 0008). On the 4-core cloud sandb
 
 ### Privacy
 
+The user-facing page is `docs/privacy.md` (M6-4). It lists every host DrumTx can contact, what is written where, and how this is tested.
+
 - All processing is local. There is no telemetry, analytics, or upload.
-- The only network access is downloading a model, which happens on first use or through `drumtx models download`, and only from pinned URLs. `--offline` guarantees no network access. A CI test runs with networking disabled.
+- The only network access is downloading a model, which happens on first use or through `drumtx models download`, and only from pinned URLs. `--offline` guarantees no network access. `tests/test_privacy.py` runs the full pipeline with `--offline` in CI, and an audit hook confirms that no socket, host lookup, URL or subprocess is opened (M6-4). ONNX Runtime's own telemetry, on by default in its Windows builds, is switched off (`models.onnx_session`).
 - Temporary files go in a private temp directory and are deleted on exit. The cache is stored inside the output directory and contains derived data only. `--no-cache` ignores and rebuilds it; deleting the folder removes it. A cached drum stem from separation can take hundreds of megabytes (about 200 MB for 10 minutes of float32 stereo).
 - The JSON stores the source file name and hash, not the audio. The documentation notes that output folders may reveal file names.
 - The documentation reminds users that they are responsible for having the rights to the audio they transcribe and to the resulting transcriptions.
