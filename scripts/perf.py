@@ -49,10 +49,16 @@ def peak_bytes() -> int:
                 ("PeakPagefileUsage", ctypes.c_size_t),
             ]
 
+        # Declared types: by default ctypes passes the 64-bit process handle as a 32-bit int.
+        current = ctypes.windll.kernel32.GetCurrentProcess
+        current.restype = wintypes.HANDLE
+        info = ctypes.windll.psapi.GetProcessMemoryInfo
+        info.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+        info.restype = wintypes.BOOL
         c = Counters()
         c.cb = ctypes.sizeof(c)
-        process = ctypes.windll.kernel32.GetCurrentProcess()
-        ctypes.windll.psapi.GetProcessMemoryInfo(process, ctypes.byref(c), c.cb)
+        if not info(current(), ctypes.byref(c), c.cb):
+            raise ctypes.WinError()
         return int(c.PeakWorkingSetSize)
     import resource
 

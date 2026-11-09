@@ -5,8 +5,9 @@ split manifests eval/dev.csv and eval/test.csv (committed). Usage:
 
     uv run python scripts/build_corpus.py ~/drumtx-data [--fetch-egmd]
 
---fetch-egmd downloads only the selected E-GMD clips from the 90 GB archive
-using HTTP range requests.
+--fetch-egmd downloads the E-GMD MIDI archive (107 MB, SHA-256 checked; it holds the
+metadata CSV too) if it is missing, and only the selected E-GMD clips from the 90 GB
+audio archive, using HTTP range requests.
 """
 
 import argparse
@@ -27,6 +28,8 @@ import mido
 
 CLASSES = ("kick", "snare", "hihat", "tom", "cymbal")
 EGMD_URL = "https://storage.googleapis.com/magentadata/datasets/e-gmd/v1.0.0/e-gmd-v1.0.0.zip"
+EGMD_MIDI_URL = EGMD_URL.replace(".zip", "-midi.zip")
+EGMD_MIDI_SHA256 = "5e70a6f4d760385a5e5ec986a2f02179d96f61181a920e592876b577a75844d3"
 # E-GMD (Roland TD-17) MIDI notes; follows the 5-class grouping used in ADTOF.
 EGMD_NOTES = {
     **dict.fromkeys((36,), "kick"),
@@ -235,9 +238,17 @@ def build(data: Path, out: Path, fetch_egmd: bool) -> None:
     # split). One kit per performance, rotating through the kits and skipping kits that remap
     # notes outside the class map.
     egmd = data / "e-gmd"
-    meta = list(csv.DictReader((egmd / "e-gmd-v1.0.0.csv").open()))
+    midi_path = egmd / "e-gmd-v1.0.0-midi.zip"
+    if fetch_egmd and not midi_path.exists():
+        egmd.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(EGMD_MIDI_URL, midi_path.with_suffix(".tmp"))
+        midi_path.with_suffix(".tmp").replace(midi_path)
+    if sha256(midi_path) != EGMD_MIDI_SHA256:
+        raise SystemExit(f"{midi_path} does not match its pinned SHA-256; delete it and retry.")
+    midi_zip = zipfile.ZipFile(midi_path)
+    with midi_zip.open("e-gmd-v1.0.0/e-gmd-v1.0.0.csv") as f:
+        meta = list(csv.DictReader(io.TextIOWrapper(f, encoding="utf-8")))
     kits = sorted({r["kit_name"] for r in meta})
-    midi_zip = zipfile.ZipFile(egmd / "e-gmd-v1.0.0-midi.zip")
 
     def read_midi(r: dict[str, str]) -> mido.MidiFile:
         return mido.MidiFile(file=io.BytesIO(midi_zip.read(f"e-gmd-v1.0.0/{r['midi_filename']}")))
