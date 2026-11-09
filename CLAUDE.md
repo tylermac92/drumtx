@@ -12,11 +12,15 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 | `docs/accuracy.md` | User-facing accuracy |
 | `docs/compatibility.md` | Notation apps checked, and the MuseScore check script |
 | `docs/models/` | Model cards |
+| `docs/cli.md` | CLI reference, generated: `uv run typer drumtx.cli utils docs --name drumtx --output docs/cli.md` after changing a command or option (`tests/test_docs.py` checks it) |
+| `docs/correction-guide.md`, `docs/troubleshooting.md`, `docs/privacy.md`, `docs/security-checklist.md` | User guides, and the security review |
+
+User pages' `bash` blocks are run by `tests/test_docs.py`, in order: keep them runnable, with real values, not placeholders.
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M6-4, through PR #46.
-- **In review: M6-5, `doctor` and cross-platform polish** (`doctor.py`, the CI wheel smoke test). Then M6-6 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M6-5, through PR #47.
+- **In review: M6-6, the documentation set** (README, `docs/cli.md`, `docs/troubleshooting.md`, `tests/test_docs.py`). Then M7-1 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.

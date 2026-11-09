@@ -196,7 +196,8 @@ def transcribe(
         bool,
         typer.Option(
             "--separate/--no-separate",
-            help="Isolate the drums first (recommended for full mixes). Needs drumtx[separation].",
+            help="Isolate the drums first (recommended for full mixes). "
+            "Needs drumtx\\[separation].",
         ),
     ] = False,
     device: Annotated[

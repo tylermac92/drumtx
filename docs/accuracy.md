@@ -8,6 +8,25 @@ More detail, development-set results and how each number was produced are in the
 
 The scores below are for **hit detection only**: the right instrument at the right time. Beats, bar lines and grid positions are in [Rhythm](#rhythm-development-set) at the end.
 
+## Drum-only recordings and full mixes
+
+What to expect on each, from the test-set results below (F-measure at ±50 ms, the default settings):
+
+| | Drum-only | Full mix | Full mix with `--separate` |
+|---|---|---|---|
+| Kick | 0.81 | 0.84 | **0.90** |
+| Snare | 0.71 | 0.72 | **0.79** |
+| Hi-hat | 0.76 | 0.76 | 0.74 |
+| Tom | 0.68 | **0.47** | 0.51 |
+| Cymbal | 0.85 | 0.85 | 0.82 |
+| Downbeats found (development set) | 0.89 | 0.86 | — |
+
+- **Kick, snare, hi-hat and cymbal** score about the same on full mixes as on drum-only recordings, but the mistakes differ. On full mixes DrumTx adds more notes that aren't there: precision drops by 0.02–0.11, and by 0.28 for toms. On drum-only recordings it misses more quiet notes.
+- **Toms are much worse on full mixes:** about half are wrong, against a third on drum-only recordings. Probably because bass and other low instruments sound like toms to the detector.
+- **`--separate` helps on full mixes** for kick (0.84 → 0.90) and snare (0.72 → 0.79), and a little for toms, at the cost of some hi-hat and cymbal. It takes about 13 s per minute of audio, and a lot of memory.
+- **Bar lines** are a little less reliable on full mixes (downbeats 0.86 against 0.89).
+- **The full-mix numbers are less certain.** They come from 11 test clips, about 11 minutes, against 181 drum-only clips. Live recordings, heavily processed or electronic kits and lo-fi sources weren't tested; expect them to do worse.
+
 ## How to read the numbers
 
 - **Precision:** the share of detected hits that are real. Low precision means extra notes to delete.
@@ -85,7 +104,7 @@ Velocity is only a rough loud/soft estimate.
 - **Quiet notes and ghost notes are often missed.** The model learned from rhythm-game charts, which leave them out. This is the main reason drum-only kick and snare fall short of their targets.
 - **Snare has extra hits on real kits:** precision 0.58–0.68. The snare threshold was tuned to catch quiet notes.
 - **Snare and tom timing is looser.** At 30 ms, their F-measure drops by 0.11–0.13; check the placement of fills.
-- **Toms in full mixes are unreliable** (F 0.47, from only 75 test hits).
+- **Full mixes:** about the same scores as drum-only recordings for kick, snare, hi-hat and cymbal, but more extra notes, and unreliable toms (F 0.47, from only 75 test hits). See [Drum-only recordings and full mixes](#drum-only-recordings-and-full-mixes).
 - **Five instrument classes only.** Toms are one class, crash and ride are one class, and open and closed hi-hat are one class.
 - **Numbers come from public datasets.** Your own recordings may differ; the M7-1 trial measures that.
 
