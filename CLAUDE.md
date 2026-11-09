@@ -17,13 +17,12 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 User pages' `bash` blocks are run by `tests/test_docs.py`, in order: keep them runnable, with real values, not placeholders.
 
-## Status (2026-11-05)
+## Status (2026-11-09)
 
-- **Done and merged:** M0 to M6-5, through PR #47.
-- **In review: M6-6, the documentation set** (README, `docs/cli.md`, `docs/troubleshooting.md`, `tests/test_docs.py`). Then M7-1 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M6-6, and the CI fixes, through PR #49.
+- **In review: the Beat This! conversion fix** (PR #50: the same file on every OS). Then M7-1 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
-- **Beat This! conversion on Windows and macOS** (Model conversion workflow, failing since M2-5): the converted `beat_this_final0.onnx` doesn't match its pinned SHA-256 there, so `drumtx models download beat-this-final0` fails on those systems. ADTOF matches everywhere. Likely cause: the rotary-embedding frequencies (`rotary_embedding_torch`) are computed with `pow`, which can differ in the last bit between platforms' math libraries. Needs a CI investigation, then a re-check of the beats (`scripts/check_beats.py`).
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
 - **Separation memory** (M6-1): `--separate` peaks at 8.6 GB on a 10-minute file, because Open-Unmix runs on the whole piece. Chunking would fix it but changes the stem, so the separation accuracy would need checking again (decision 0008). No task is planned for it.
 - **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.
@@ -91,6 +90,7 @@ uv run --python 3.11 pytest -q
 | `doctor.py` | `drumtx doctor`: what this installation can do |
 
 **Models** are downloaded and converted on first use to ONNX or safetensors, with the SHA-256 verified, in a throwaway uv environment. They go to `~/.cache/drumtx/models`; `DRUMTX_CACHE_DIR` overrides that. To install them ahead of time, run `uv run drumtx models download <id>` for `adtof`, `beat-this-final0` and `umxl-drums`.
+- **A conversion must give the same bytes on every machine,** because its SHA-256 is pinned. Write only the checkpoint's own tensors: no export-time arithmetic on the weights. For example, `torch.onnx.export`'s default eval mode folds BatchNorm into convolutions with the CPU's own vector kernels, so Beat This! is exported with `training=PRESERVE`. The Model conversion workflow checks Linux, macOS and Windows.
 
 **Tests** (`tests/conftest.py`):
 - **Network blocked:** tests can't reach the network, and `DRUMTX_CACHE_DIR` points to a temporary folder.
