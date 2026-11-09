@@ -39,7 +39,7 @@ The checkpoint is a PyTorch pickle. DrumTx never loads it itself: after checking
 | Beats | 10,326 | 0 | 0 ms |
 | Downbeats | 2,816 | 0 | 0 ms |
 
-The outputs are identical, so the PyTorch fallback extra (decision 0006) is not needed. The log-mel spectrogram itself differs from torchaudio's by at most 1.2e-4, in values up to 8.
+The outputs are identical, so the PyTorch fallback extra (decision 0006) is not needed. The same check on the file exported with `training=PRESERVE` (November 2026) gave the same result. The log-mel spectrogram itself differs from torchaudio's by at most 1.2e-4, in values up to 8.
 
 Reproduce in two steps:
 1. Run `dump` in an environment with `beat-this` and PyTorch, such as the spike environment.
