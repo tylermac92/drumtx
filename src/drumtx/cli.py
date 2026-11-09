@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import math
+import sys
 from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Annotated, cast, get_args
 import soundfile as sf
 import typer
 
+from drumtx import doctor as checks
 from drumtx import ingest, mapping, models, pipeline, plot, render, schema, separate, synth
 from drumtx.detect import Preset
 from drumtx.errors import DrumtxError, InputError
@@ -40,6 +42,9 @@ def main(
     ] = False,
 ) -> None:
     """Drum transcription from audio to editable notation."""
+    for stream in (sys.stdout, sys.stderr):  # on a Windows code page, escape what it can't show
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(errors="backslashreplace")
 
 
 def _setup_logging(verbose: bool, quiet: bool) -> None:
@@ -288,7 +293,9 @@ def evaluate(
         )
         report = ev.markdown(result, pred, ref)
         if out is not None:
-            out.with_name(out.name + ".json").write_text(json.dumps(result, indent=2) + "\n")
+            out.with_name(out.name + ".json").write_text(
+                json.dumps(result, indent=2) + "\n", encoding="utf-8"
+            )
             out.with_name(out.name + ".md").write_text(report, encoding="utf-8")
         typer.echo(report, nl=False)
 
@@ -462,19 +469,9 @@ def preview(
     _run(verbose, work)
 
 
-# The other commands from the Technical Design Document §4 are stubs until their milestones land.
-_COMMANDS = {
-    "doctor": "Check the environment: Python, decoders, FFmpeg, extras, models.",
-}
-
-
-def _stub(name: str) -> Callable[[], None]:
-    def command() -> None:
-        typer.echo(f"drumtx {name}: not implemented yet.", err=True)
-        raise typer.Exit(1)
-
-    return command
-
-
-for _name, _help in _COMMANDS.items():
-    app.command(_name, help=_help)(_stub(_name))
+@app.command(help="Check the environment: Python, decoders, FFmpeg, extras, models, device.")
+def doctor() -> None:
+    rows = checks.report()
+    width = max(len(name) for name, _ in rows)
+    for name, status in rows:
+        typer.echo(f"{name:<{width}}  {status}")

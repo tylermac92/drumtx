@@ -15,8 +15,8 @@ DrumTx is a personal command-line tool. It turns drum audio into MusicXML, MIDI,
 
 ## Status (2026-11-05)
 
-- **Done and merged:** M0 to M6-3, through PR #45.
-- **In review: M6-4, privacy** (`docs/privacy.md`, `tests/test_privacy.py`, `models.onnx_session`). Then M6-5 and so on, in the order of `docs/milestone-tasks.md`.
+- **Done and merged:** M0 to M6-4, through PR #46.
+- **In review: M6-5, `doctor` and cross-platform polish** (`doctor.py`, the CI wheel smoke test). Then M6-6 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
@@ -81,6 +81,7 @@ uv run --python 3.11 pytest -q
 | `mapping.py` | Instrument mapping (`mapping.toml`) |
 | `evaluate.py` | Onset, beat and grid metrics |
 | `models.py` | Model registry |
+| `doctor.py` | `drumtx doctor`: what this installation can do |
 
 **Models** are downloaded and converted on first use to ONNX or safetensors, with the SHA-256 verified, in a throwaway uv environment. They go to `~/.cache/drumtx/models`; `DRUMTX_CACHE_DIR` overrides that. To install them ahead of time, run `uv run drumtx models download <id>` for `adtof`, `beat-this-final0` and `umxl-drums`.
 

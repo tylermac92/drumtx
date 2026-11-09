@@ -17,6 +17,8 @@ pipx install .
 drumtx --help
 ```
 
+`drumtx doctor` shows what the installation can do: FFmpeg, the extras, the models and the device, with the command to add anything missing.
+
 Two optional extras: `[separation]` for `--separate` (PyTorch, large) and `[plot]` for `--plot` (matplotlib). Install with, for example, `pipx install ".[plot]"`, or add one later with `pipx inject drumtx matplotlib`.
 
 ## Develop
