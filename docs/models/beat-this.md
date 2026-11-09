@@ -11,7 +11,7 @@ The beat and downbeat tracker from [Beat This!](https://github.com/CPJKU/beat_th
 |---|---|
 | License | MIT (code and weights). Some of its training audio is copyrighted (decision 0003). |
 | Upstream file | `final0.ckpt` (81 MB) from the `beat_this` package's download location, SHA-256 `8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331` |
-| Loaded file | `beat_this_final0.onnx` (83 MB), SHA-256 `9d04713f5e9764366910825b2617948d945972154f84ac9f92cc9753be94ebda` |
+| Loaded file | `beat_this_final0.onnx` (83 MB), SHA-256 `729e39fa055c7e5bb8b22c0f0c845eeb22ad36b9ef48255556256472cd670ef5` |
 | Input | Mono audio resampled to 22,050 Hz: magnitude STFT (1024 points, hop 441), 128 Slaney mel bands from 30 Hz to 11 kHz, `log1p(1000·x)` (`drumtx.beats.log_mel`) |
 | Inference | Chunks of 1,500 frames (30 s). Chunks overlap by 6 frames, which are discarded at each edge; where they overlap, the earlier chunk wins. |
 | Postprocessing | Upstream's "minimal" one: a frame is a beat if it is the maximum within ±60 ms and its probability is above 0.5. Adjacent peaks are merged, and each downbeat moves to its nearest beat. |
@@ -26,8 +26,8 @@ drumtx models download beat-this-final0
 
 The checkpoint is a PyTorch pickle. DrumTx never loads it itself: after checking its SHA-256, it converts it to ONNX once with `src/drumtx/convert_beat_this.py`.
 - **Conversion environment:** a throwaway `uv run --isolated` environment with `beat-this==1.1.0` from PyPI and PyTorch. That package reads the checkpoint with `torch.load(weights_only=True)`, which reads tensors only.
-- **Reproducible output:** the result must match the pinned SHA-256, and a fresh conversion reproduced the M0-5 spike's file exactly.
-- **Accuracy:** ONNX Runtime matches PyTorch within 2.3e-6 on the logits.
+- **Reproducible output:** the result must match the pinned SHA-256, on Linux, macOS and Windows (the Model conversion workflow). Every weight in the file is a checkpoint tensor, copied or transposed, and nothing is computed from them at export. Until November 2026 the export folded the BatchNorm layers into the convolutions. That arithmetic ran on the CPU's own vector instructions, so the file differed in the last bit between machines, and the download failed on macOS, Windows and some Linux machines. The BatchNorm layers are now kept as they are (`training=PRESERVE`). An older file fails the new SHA-256; `drumtx models download beat-this-final0` replaces it.
+- **Accuracy:** ONNX Runtime matches PyTorch within 2.5e-6 on the logits.
 - **Network:** with `--offline` and no model installed, `transcribe` exits with code 3. This applies to every detector, including `--model baseline`, because every run tracks beats.
 
 ## Check against upstream (M3-1)

@@ -133,7 +133,7 @@ REGISTRY = {
         url="https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/",
         sources={"final0.ckpt": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"},
         file="beat_this_final0.onnx",
-        sha256="9d04713f5e9764366910825b2617948d945972154f84ac9f92cc9753be94ebda",
+        sha256="729e39fa055c7e5bb8b22c0f0c845eeb22ad36b9ef48255556256472cd670ef5",
         convert=_uv_convert(
             "convert_beat_this.py",
             ["beat-this==1.1.0", "torch==2.15.0", "torchaudio==2.11.1", "onnx==1.23.2"]
