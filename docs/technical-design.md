@@ -114,6 +114,21 @@ Details (M5-3, `pipeline.rerender`):
 
 `drumtx preview INPUT EVENTS` reads an `events.json` or an `events.csv` (edited or not) and writes `-o FILE`, by default `<input name>.preview.wav` next to EVENTS. It refuses to overwrite an existing file without `--force`. `--split-stereo` puts the original on the left channel and the synthesized hits on the right; without it the output is mono.
 
+### `doctor`
+
+`drumtx doctor` prints one line per component, and for anything missing, the command that adds it:
+- the DrumTx and Python versions;
+- the formats libsndfile reads, and FFmpeg's version and path;
+- ONNX Runtime;
+- each extra, installed or not, with the `pipx inject` or `pip install` command;
+- each model: installed with its SHA-256 checked, damaged, or not installed;
+- the model folder;
+- the device: CPU cores, and whether PyTorch sees a CUDA GPU.
+
+It downloads nothing and always exits 0. CI installs the built wheel with pipx on Linux, macOS and Windows, checks `doctor` against the runner before and after `pipx inject`-ing the plot extra, and runs `preview` and `evaluate` from the installed wheel (M6-5).
+
+**Windows consoles.** When output is redirected, Windows encodes it with the console's code page, which can't show every file name. DrumTx sets both output streams to escape such characters (`ドラム.wav` prints as `\u30c9\u30e9\u30e0.wav`) rather than fail.
+
 ### Key `evaluate` options
 
 `evaluate` takes `--pred` (an `events.json` or `events.csv`) and `--ref`: a MIDI file (channel 10, General MIDI drum notes) or a CSV in the `events.csv` format. Options:

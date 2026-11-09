@@ -42,7 +42,23 @@ jobs:
       - run: uv run pytest
         env:
           DRUMTX_MUSICXML_XSD: ${{ runner.temp }}/musicxml-xsd
-      - name: Install with pipx and smoke test
+      # The built wheel, installed with pipx without and then with an extra (M6-5): `doctor` must
+      # match the runner, and two commands that need no model must run.
+      - name: Install the wheel with pipx and smoke test
+        shell: bash
         run: |
-          pipx install --python python .
+          uv build --wheel --out-dir dist
+          pipx install --python python dist/drumtx-*.whl
           drumtx --version
+          drumtx doctor | tee doctor.txt
+          if command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null; then
+            grep -q "^FFmpeg  *ffmpeg version" doctor.txt
+          else
+            grep -q "^FFmpeg  *not found" doctor.txt
+          fi
+          grep -q "^Extra \[plot\]  *not installed" doctor.txt
+          pipx inject drumtx "matplotlib>=3.8"
+          drumtx doctor | grep -q "^Extra \[plot\]  *installed"
+          uv run python scripts/make_guide_sample.py smoke
+          drumtx preview smoke/groove.wav smoke/groove.truth.csv -o smoke/preview.wav
+          drumtx evaluate --pred smoke/groove.truth.csv --ref smoke/groove.truth.csv | grep -q "1.000"
