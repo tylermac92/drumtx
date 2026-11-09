@@ -4,6 +4,10 @@ Command-line drum transcription from audio to editable notation. A personal proj
 
 **Status:** M3 (tempo, quantization and MIDI) is done, and so is M4 (MusicXML). `drumtx transcribe` writes `events.json`, `events.csv`, a MIDI file, a MusicXML file and a review report (`report.md`, M5-1); `drumtx preview` mixes the original audio with the detected hits; `drumtx render` re-renders after edits to `events.csv` or with a moved bar 1 or a new meter; `evaluate` and `models` work. `--mark-uncertain` colors doubtful notes red. Every development-set transcription opens in MuseScore (`docs/compatibility.md`). The review flags are tuned (M5-4), and `docs/correction-guide.md` shows how to correct a transcription, step by step. With the `[plot]` extra, `--plot` draws the hits over time with flagged measures shaded. M6 (hardening and documentation) is next. Progress notes for contributors are in `CLAUDE.md`.
 
+## Privacy
+
+Everything runs on your computer: no upload and no telemetry. The only network access is downloading the models, once; after that, `--offline` guarantees none. See `docs/privacy.md`.
+
 ## Install
 
 Requires Python 3.11–3.13.
