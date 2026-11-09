@@ -58,7 +58,9 @@ jobs:
           fi
           grep -q "^Extra \[plot\]  *not installed" doctor.txt
           pipx inject drumtx "matplotlib>=3.8"
-          drumtx doctor | grep -q "^Extra \[plot\]  *installed"
+          drumtx doctor > doctor.txt  # grep -q on a pipe can end doctor with a broken pipe
+          grep -q "^Extra \[plot\]  *installed" doctor.txt
           uv run python scripts/make_guide_sample.py smoke
           drumtx preview smoke/groove.wav smoke/groove.truth.csv -o smoke/preview.wav
-          drumtx evaluate --pred smoke/groove.truth.csv --ref smoke/groove.truth.csv | grep -q "1.000"
+          drumtx evaluate --pred smoke/groove.truth.csv --ref smoke/groove.truth.csv > evaluate.md
+          grep -q "1.000" evaluate.md

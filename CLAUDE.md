@@ -23,6 +23,7 @@ User pages' `bash` blocks are run by `tests/test_docs.py`, in order: keep them r
 - **In review: M6-6, the documentation set** (README, `docs/cli.md`, `docs/troubleshooting.md`, `tests/test_docs.py`). Then M7-1 and so on, in the order of `docs/milestone-tasks.md`.
 
 **Open items carried forward:**
+- **Beat This! conversion on Windows and macOS** (Model conversion workflow, failing since M2-5): the converted `beat_this_final0.onnx` doesn't match its pinned SHA-256 there, so `drumtx models download beat-this-final0` fails on those systems. ADTOF matches everywhere. Likely cause: the rotary-embedding frequencies (`rotary_embedding_torch`) are computed with `pow`, which can differ in the last bit between platforms' math libraries. Needs a CI investigation, then a re-check of the beats (`scripts/check_beats.py`).
 - **Performance on the reference laptop** (M6-1): run `scripts/perf.py` on a 4- and a 10-minute track, and with `--separate`, as decision 0008 describes, and commit the results. The sandbox already meets both targets with a wide margin.
 - **Separation memory** (M6-1): `--separate` peaks at 8.6 GB on a 10-minute file, because Open-Unmix runs on the whole piece. Chunking would fix it but changes the stem, so the separation accuracy would need checking again (decision 0008). No task is planned for it.
 - **Correction guide on your own recording** (M5-5): the owner follows `docs/correction-guide.md` end to end on one of their own recordings, using only its steps, and adds a row to its "Walk-throughs" table. The guide's example is a generated recording, so it can be committed.
@@ -57,12 +58,14 @@ Put no model IDs in commits or PRs.
 uv sync
 uv run pytest -q
 uv run ruff check . && uv run ruff format --check .
-for p in linux darwin win32; do uv run mypy --platform $p src tests scripts; done
+for py in 3.11 3.13; do for p in linux darwin win32; do uv run --python $py mypy --platform $p src tests scripts; done; done
+uv run --python 3.13 pytest -q
 uv run --python 3.11 pytest -q
 ```
 
 - **CI runs** Linux, macOS and Windows, with Python 3.11 and 3.13.
-- **Why the per-platform mypy loop:** mypy has failed only on macOS before, from platform branches in `models.py`. If mypy acts strangely, run `rm -rf .mypy_cache`.
+- **Why the per-platform, per-version mypy loop:** mypy has failed on macOS only (platform branches in `models.py`) and on Python 3.13 only (its numpy stubs are stricter). If mypy acts strangely, run `rm -rf .mypy_cache`.
+- **Shell in CI:** don't pipe into `grep -q` under `pipefail`; write to a file first. `grep -q` exits at the first match, and the writer can then fail with a broken pipe (it did on macOS).
 - **Golden files** (`tests/golden/`) are compared byte for byte. After a deliberate change, regenerate them with `DRUMTX_UPDATE_GOLDEN=1 uv run pytest tests/test_midi.py tests/test_musicxml.py` and review the diff.
 - **MusicXML tests** need the XSD: run `uv run python scripts/fetch_musicxml_xsd.py <dir>` once and set `DRUMTX_MUSICXML_XSD=<dir>`. Without it they skip, except in CI.
 - **Running the CLI:** use `uv run drumtx …`. `python -m drumtx.cli` does nothing, because there is no `__main__`.

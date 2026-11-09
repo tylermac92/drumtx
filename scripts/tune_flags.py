@@ -160,11 +160,11 @@ def summary(flags: np.ndarray, m: Measures, wrong: np.ndarray) -> dict[str, floa
     out = {
         "flagged": float(flags.mean()),
         "recall": float((flags & wrong).sum() / wrong.sum()),
-        "precision": float((flags & wrong).sum() / max(1, flags.sum())),
+        "precision": float((flags & wrong).sum() / max(1, int(flags.sum()))),
     }
     for k in ERRORS:
         has = wrong & (m.errors[k] > 0)
-        out[f"recall_{k}"] = float((flags & has).sum() / max(1, has.sum()))
+        out[f"recall_{k}"] = float((flags & has).sum() / max(1, int(has.sum())))
     return out
 
 
