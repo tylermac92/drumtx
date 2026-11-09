@@ -71,7 +71,7 @@ The onset targets were reviewed after the baseline was measured (M1-6, decision 
 | Grid accuracy on the test set: share of the reference score's hits that DrumTx detected and placed in the correct measure, beat and slot | ≥ 0.75 on drum-only audio. The share over all reference hits, missed ones included, is reported without a target. |
 | Notation validity | 100% of generated MusicXML validates against the MusicXML 4.0 schema and opens in MuseScore without errors on the development set during work (M4-5) and on the test set at release (M7-4). |
 | Runtime | ≤ 1× real time on a reference laptop CPU without separation (the reference machine is in decision 0008). |
-| Correction effort | On your own recordings, correcting the draft is faster than transcribing by hand (timed on at least two tracks in M7-1). |
+| Correction effort | On your own recordings, a draft can be corrected to a score that sounds right in the browser editor, with no CSV or notation editing. The time per track is recorded on at least two tracks (M7-1b). Reworded after M7-1: the original target (faster than transcribing by hand) assumed hand-transcription experience. |
 | Installation | Clean install and smoke test pass on all three operating systems in CI. |
 
 ## Major risks

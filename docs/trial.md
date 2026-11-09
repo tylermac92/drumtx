@@ -1,63 +1,53 @@
 # Personal trial (M7-1)
 
-The owner transcribes 5–10 of their own recordings, follows the [correction guide](correction-guide.md) on each, and logs what goes wrong. M7-2 fixes the issues from this page, and re-decides Q3 (whether `--separate` should be on by default) from the recording table.
+The owner transcribes 5–10 of their own recordings, listens to each draft, and logs what sounds wrong. This is a listening trial: no corrections and no timing. Fixing a draft by editing `events.csv` turned out too hard without transcription experience (issue 1 below), so correcting and its timing move to the browser editor (M7-1b).
 
-**Done when:**
-- Every issue is in the issue table with a severity.
-- At least two tracks are timed: correcting the draft against transcribing by hand. The brief's correction-effort target is that correcting is faster.
+M7-2 fixes the issues from this page, and re-decides Q3 (whether `--separate` should be on by default) from the recording table.
 
-**Privacy:** the recordings and their outputs stay outside the repo. This page holds only descriptions and numbers.
+**Done when:** every recording has a row and a rating, and every issue is in the issue table with a severity.
+
+**Privacy:** the recordings and their outputs stay outside the repo. This page holds only descriptions and ratings.
 
 ## Choosing recordings
 
 Pick 5–10 recordings, across styles:
 - **Feel:** straight rock or pop, swung or shuffled, a ballad, something fast, and one with fills or odd bars if you have it.
 - **Sound:** some drum-only and some full mixes.
-- **Separation:** run each full mix twice, once plainly and once with `--separate`, and note which draft needed less correcting. Q3 is decided from this.
+- **Separation:** run each full mix twice, once plainly and once with `--separate`, and note which draft sounds closer. Q3 is decided from this.
 
 ## Each recording
 
-1. **Transcribe:** `drumtx transcribe song.wav`.
-2. **Keep the draft:** `mkdir drafts && cp song_drumtx/song.events.csv drafts/song.events.csv`, before you edit anything. `render` rewrites `events.json`, so this copy is the only record of the draft.
-3. **Correct:** follow the correction guide until the score is right. Log every problem in the issue table as you go.
-4. **Measure how much you changed:** `drumtx evaluate --pred drafts/song.events.csv --ref song_drumtx/song.events.csv`. Each FP is a hit you deleted and each FN is a hit you added, so the **all** row's F is how close the draft was. Record the ±50 ms F in the recording table.
-5. **Keep the corrected `events.csv`** beside the audio, outside the repo. It is the hand annotation that M7-2 can add to the development set.
+1. **Transcribe:** `drumtx transcribe song.wav`. For a full mix, also `drumtx transcribe song.wav --separate -o song_separated`.
+2. **Read the report** (`song_drumtx/song.report.md`): is the tempo about right, or half or double? Is the time signature right? Note how many measures are flagged.
+3. **Listen:** `drumtx preview song.wav song_drumtx/song.events.json --split-stereo`, then play `song_drumtx/song.preview.wav` with headphones. Your recording is on the left and DrumTx's hits are on the right. You don't need to write notation: just note what sounds wrong and roughly when (the time in the player is enough). For example:
+   - hits on the right that aren't in the recording, or hits in the recording with silence on the right;
+   - the wrong drum, such as a tom played as a snare;
+   - the right channel drifting ahead of or behind the recording.
+4. **Rate the draft:**
+   - **Usable:** a few wrong or missing hits; the groove is recognizable.
+   - **Needs work:** many wrong hits, or one part (such as the hi-hat) mostly wrong, but the timing holds.
+   - **Unusable:** the timing is wrong (drifting, half or double tempo), or most hits are wrong.
+5. **Optional:** open `song_drumtx/song.musicxml` in MuseScore and note anything that reads badly.
 
-On the first recording, also add a row to the correction guide's "Walk-throughs" table (M5-5).
-
-## Timing (at least two tracks)
-
-The brief's measure is time to a finished score. For each timed track:
-- Take two excerpts of the same length (30–60 s) from the same recording, of similar difficulty.
-- **By hand:** transcribe one excerpt from the audio into MuseScore, with no draft.
-- **Correcting:** time the other excerpt from `drumtx transcribe` to a corrected score in MuseScore, following the guide.
-- Swap which excerpt is done by hand on the second track, so neither method always gets the harder excerpt.
-
-Record the times in minutes, including listening and checking.
+On a full mix, do steps 2–4 for both runs, and say which sounded closer.
 
 ## Severity
 
 | Severity | Meaning | Example |
 |---|---|---|
-| 1 | Blocks use: a crash, a wrong result the guide can't fix, lost or overwritten work, or a score MuseScore won't open | Every bar shifted, and `--first-downbeat` doesn't fix it |
-| 2 | Costly: fixable with the guide's steps, but takes much longer than it should | Most snare ghost notes missing; tempo halved |
+| 1 | Blocks use: a crash, lost or overwritten work, a score MuseScore won't open, or a draft that can't be fixed with the tools you have | Fixing hits needs CSV editing you can't do |
+| 2 | Costly: a draft that would take much longer to fix than it should | Most snare ghost notes missing; tempo halved |
 | 3 | Minor: cosmetic, or quick to fix | An awkward rest; a misleading message |
 
 M7-2 closes every severity-1 issue.
 
 ## Recordings
 
-| # | Recording (description only) | Style | Sound | `--separate` | Length | Draft F (±50 ms) | Flagged measures | Notes |
-|---|---|---|---|---|---|---|---|---|
-| | Not yet done | | | | | | | |
+| # | Recording (description only) | Style | Sound | `--separate` | Length | Tempo right? | Flagged measures | Rating | What sounded wrong |
+|---|---|---|---|---|---|---|---|---|---|
+| | Not yet done | | | | | | | | |
 
-**Sound** is drum-only or full mix. For a full mix run twice, give one row per run.
-
-## Timings
-
-| Track # | Excerpt length | By hand (min) | Correcting (min) | Done first | Faster |
-|---|---|---|---|---|---|
-| | Not yet done | | | | |
+**Sound** is drum-only or full mix. For a full mix, give one row per run.
 
 ## Issues
 
@@ -65,11 +55,11 @@ Ranked by severity, then by how often it came up.
 
 | # | Severity | What happened | Recordings | Likely cause | Status |
 |---|---|---|---|---|---|
-| | | Not yet done | | | |
+| 1 | 1 | Fixing hits means editing `events.csv` by hand: finding the time of each hit and typing rows. Without transcription experience this was too hard to finish on the owner's first recording. | The first one tried | Correcting assumes you can find fixes by ear and enter them as numbers | Planned: the browser editor (M7-1b) |
 
 ## Result
 
 Not yet done. Once the trial is done, summarize here:
-- whether correcting was faster on every timed track;
+- how many drafts were usable, needed work, or were unusable, for drum-only and for full mixes;
 - the severity-1 issues;
 - what the full-mix runs say about `--separate` (Q3).
